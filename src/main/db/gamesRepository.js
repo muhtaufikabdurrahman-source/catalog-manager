@@ -36,6 +36,7 @@ function rowToGame(row) {
     sellPriceShopee: row.sell_price_shopee,
     notes: row.notes,
     coverImageId: row.cover_image_id,
+    isBestSeller: row.is_best_seller === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     imageCount: row.image_count ?? undefined
@@ -220,6 +221,7 @@ function listGames(options = {}) {
     minPrice = null,
     maxPrice = null,
     priceField = 'sell_price_offline',
+    isBestSeller = null,
     sortBy = 'updated_at',
     sortDir = 'desc',
     limit = 100,
@@ -257,6 +259,10 @@ function listGames(options = {}) {
   if (maxPrice !== null) {
     where.push(`g.${priceField} <= @maxPrice`);
     params.maxPrice = maxPrice;
+  }
+  if (isBestSeller !== null) {
+    where.push('g.is_best_seller = @isBestSeller');
+    params.isBestSeller = isBestSeller ? 1 : 0;
   }
 
   let fromClause = 'games g';
@@ -342,6 +348,15 @@ function bulkUpdatePrice({ ids, field, mode, value }) {
   tx(ids);
 }
 
+function toggleBestSeller(id) {
+  const db = getDb();
+  const row = db.prepare(`SELECT is_best_seller FROM games WHERE id = ?`).get(id);
+  if (!row) throw new Error('Game tidak ditemukan');
+  const next = row.is_best_seller === 1 ? 0 : 1;
+  db.prepare(`UPDATE games SET is_best_seller = ?, updated_at = ? WHERE id = ?`).run(next, nowIso(), id);
+  return { isBestSeller: next === 1 };
+}
+
 module.exports = {
   createGame,
   getGameById,
@@ -352,5 +367,6 @@ module.exports = {
   listGames,
   getPriceHistory,
   bulkDelete,
-  bulkUpdatePrice
+  bulkUpdatePrice,
+  toggleBestSeller
 };

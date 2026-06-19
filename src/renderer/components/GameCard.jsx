@@ -6,14 +6,19 @@ function formatPrice(value) {
   return 'Rp' + Number(value).toLocaleString('id-ID');
 }
 
-export default function GameCard({ game, selected, onToggleSelect, onOpen }) {
+export default function GameCard({ game, selected, onToggleSelect, onOpen, onToggleBestSeller }) {
   const { src, elRef } = useLazyThumbnail(game.coverImageId);
   const regions = Array.isArray(game.region) ? game.region : [game.region];
+
+  async function handleToggleBestSeller(e) {
+    e.stopPropagation();
+    if (onToggleBestSeller) onToggleBestSeller(game.id);
+  }
 
   return (
     <div
       ref={elRef}
-      className={`game-card ${selected ? 'selected' : ''}`}
+      className={`game-card ${selected ? 'selected' : ''} ${game.isBestSeller ? 'is-best-seller' : ''}`}
       onClick={() => onOpen(game)}
     >
       <input
@@ -23,6 +28,15 @@ export default function GameCard({ game, selected, onToggleSelect, onOpen }) {
         onClick={(e) => e.stopPropagation()}
         onChange={() => onToggleSelect(game.id)}
       />
+
+      {/* Tombol toggle best seller */}
+      <button
+        className="game-card-star"
+        title={game.isBestSeller ? 'Hapus dari Best Seller' : 'Tandai Best Seller'}
+        onClick={handleToggleBestSeller}
+      >
+        {game.isBestSeller ? '⭐' : '☆'}
+      </button>
 
       <div className="game-card-cover">
         {game.coverImageId ? (

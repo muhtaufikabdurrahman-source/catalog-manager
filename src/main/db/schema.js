@@ -113,6 +113,12 @@ const MIGRATIONS = [
   // ---- versi 2: app_meta seed untuk shopee_admin_fee ----
   `
   INSERT OR IGNORE INTO app_meta (key, value) VALUES ('shopee_admin_fee', '8');
+  `,
+
+  // ---- versi 3: flag best seller di tabel games ----
+  `
+  ALTER TABLE games ADD COLUMN is_best_seller INTEGER NOT NULL DEFAULT 0;
+  CREATE INDEX idx_games_best_seller ON games(is_best_seller);
   `
 ];
 
@@ -128,4 +134,4 @@ function runMigrations(db) {
   }
 }
 
-module.exports = { runMigrations, SCHEMA_VERSION: MIGRATIONS.length };
+module.exports = { runMigrations, SCHEMA_VERSION: MIGRATIONS.length }; // v3

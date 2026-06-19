@@ -26,15 +26,14 @@ export default function CatalogPage() {
   const [editingGame, setEditingGame] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showBulkPriceModal, setShowBulkPriceModal] = useState(false);
+  const [importStatus, setImportStatus] = useState(null); // { inserted, updated, skipped, errors }
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 250);
     return () => clearTimeout(t);
   }, [search]);
 
-  useEffect(() => {
-    setPage(0);
-  }, [debouncedSearch, platform, region, condition, sortBy, sortDir]);
+  useEffect(() => { setPage(0); }, [debouncedSearch, platform, region, condition, sortBy, sortDir]);
 
   const fetchGames = useCallback(async () => {
     setLoading(true);
@@ -58,17 +57,14 @@ export default function CatalogPage() {
     }
   }, [debouncedSearch, platform, region, condition, sortBy, sortDir, page]);
 
-  useEffect(() => {
-    fetchGames();
-  }, [fetchGames]);
+  useEffect(() => { fetchGames(); }, [fetchGames]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   function toggleSelect(id) {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   }
@@ -82,12 +78,8 @@ export default function CatalogPage() {
   }
 
   function handleSort(field) {
-    if (sortBy === field) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortBy(field);
-      setSortDir('asc');
-    }
+    if (sortBy === field) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortBy(field); setSortDir('asc'); }
   }
 
   async function handleDeleteSelected() {
@@ -104,6 +96,62 @@ export default function CatalogPage() {
     fetchGames();
   }
 
+  async function handleToggleBestSeller(id) {
+    await window.api.games.toggleBestSeller(id);
+    fetchGames();
+  }
+
+  // ---- Export ----
+  async function handleExportExcel() {
+    const result = await window.api.importExport.exportExcel();
+    if (!result.canceled) alert(`Export Excel selesai: ${result.count} game disimpan ke:\n${result.filePath}`);
+  }
+
+  async function handleExportCsv() {
+    const result = await window.api.importExport.exportCsv();
+    if (!result.canceled) alert(`Export CSV selesai: ${result.count} game disimpan ke:\n${result.filePath}`);
+  }
+
+  // ---- Import ----
+  async function handleImport() {
+    const pick = await window.api.importExport.pickImportFile();
+    if (pick.canceled) return;
+    setLoading(true);
+    try {
+      const result = await window.api.importExport.importFile(pick.filePath);
+      setImportStatus(result);
+      fetchGames();
+    } catch (err) {
+      alert('Gagal import: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ---- Backup / Restore ----
+  async function handleBackup() {
+    const result = await window.api.backup.backupTo();
+    if (!result.canceled) alert(`Backup berhasil disimpan ke:\n${result.path}`);
+  }
+
+  async function handleRestore() {
+    const confirm1 = confirm(
+      '⚠️ PERHATIAN: Restore akan MENGGANTIKAN semua data saat ini dengan data dari file backup.\n\n' +
+      'Pastikan Anda sudah membuat backup data terbaru sebelum melanjutkan.\n\n' +
+      'Lanjutkan restore?'
+    );
+    if (!confirm1) return;
+    try {
+      const result = await window.api.backup.restoreFrom();
+      if (!result.canceled) {
+        alert('Restore berhasil! Aplikasi perlu dimuat ulang.');
+        window.location.reload();
+      }
+    } catch (err) {
+      alert('Gagal restore: ' + err.message);
+    }
+  }
+
   const hasSelection = selectedIds.size > 0;
 
   return (
@@ -117,12 +165,36 @@ export default function CatalogPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
-          + Tambah Game
-        </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Import/Export */}
+          <div className="btn-group-dropdown">
+            <button className="btn btn-sm" onClick={handleImport}>⬆ Import</button>
+          </div>
+          <div className="btn-group-dropdown">
+            <button className="btn btn-sm" onClick={handleExportExcel}>⬇ Excel</button>
+            <button className="btn btn-sm" onClick={handleExportCsv}>⬇ CSV</button>
+          </div>
+          {/* Backup */}
+          <button className="btn btn-sm" title="Backup database" onClick={handleBackup}>💾 Backup</button>
+          <button className="btn btn-sm" title="Restore database" onClick={handleRestore}>♻️ Restore</button>
+          <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>+ Tambah Game</button>
+        </div>
       </div>
 
       {loading && <div className="loading-bar" />}
+
+      {/* Notifikasi hasil import */}
+      {importStatus && (
+        <div className="import-result-bar">
+          <span>Import selesai — Baru: <strong>{importStatus.inserted}</strong> · Diupdate: <strong>{importStatus.updated}</strong> · Dilewati: <strong>{importStatus.skipped}</strong></span>
+          {importStatus.errors.length > 0 && (
+            <span style={{ color: 'var(--color-danger)', marginLeft: 12 }}>
+              {importStatus.errors.length} error
+            </span>
+          )}
+          <button className="btn btn-sm" style={{ marginLeft: 'auto' }} onClick={() => setImportStatus(null)}>✕</button>
+        </div>
+      )}
 
       <div className="content-scroll">
         <div className="toolbar-row">
@@ -153,10 +225,12 @@ export default function CatalogPage() {
               <option value="sell_price_shopee:desc">Harga Shopee Tertinggi</option>
             </select>
           </div>
-
-          <div className="view-toggle">
-            <button className={viewMode === 'grid' ? 'active' : ''} onClick={() => setViewMode('grid')}>Grid</button>
-            <button className={viewMode === 'list' ? 'active' : ''} onClick={() => setViewMode('list')}>List</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{total} game</span>
+            <div className="view-toggle">
+              <button className={viewMode === 'grid' ? 'active' : ''} onClick={() => setViewMode('grid')}>Grid</button>
+              <button className={viewMode === 'list' ? 'active' : ''} onClick={() => setViewMode('list')}>List</button>
+            </div>
           </div>
         </div>
 
@@ -184,6 +258,7 @@ export default function CatalogPage() {
                 selected={selectedIds.has(game.id)}
                 onToggleSelect={toggleSelect}
                 onOpen={setEditingGame}
+                onToggleBestSeller={handleToggleBestSeller}
               />
             ))}
           </div>
@@ -210,24 +285,15 @@ export default function CatalogPage() {
       </div>
 
       {showCreateModal && (
-        <GameFormModal
-          game={null}
-          onClose={() => setShowCreateModal(false)}
-          onSaved={() => fetchGames()}
-        />
+        <GameFormModal game={null} onClose={() => setShowCreateModal(false)} onSaved={() => fetchGames()} />
       )}
-
       {editingGame && (
         <GameFormModal
           game={editingGame}
           onClose={() => setEditingGame(null)}
-          onSaved={(updated) => {
-            fetchGames();
-            setEditingGame(updated);
-          }}
+          onSaved={(updated) => { fetchGames(); setEditingGame(updated); }}
         />
       )}
-
       {showBulkPriceModal && (
         <BulkUpdatePriceModal
           count={selectedIds.size}

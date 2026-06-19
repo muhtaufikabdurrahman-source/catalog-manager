@@ -53,4 +53,9 @@ function closeDb() {
   }
 }
 
-module.exports = { getDb, closeDb, getDbPath, getDbDirectory };
+function reopenDb() {
+  // Paksa buka ulang koneksi (dipanggil setelah restore)
+  return getDb();
+}
+
+module.exports = { getDb, closeDb, reopenDb, getDbPath, getDbDirectory };
