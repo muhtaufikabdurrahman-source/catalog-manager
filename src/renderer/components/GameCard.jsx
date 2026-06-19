@@ -8,6 +8,7 @@ function formatPrice(value) {
 
 export default function GameCard({ game, selected, onToggleSelect, onOpen }) {
   const { src, elRef } = useLazyThumbnail(game.coverImageId);
+  const regions = Array.isArray(game.region) ? game.region : [game.region];
 
   return (
     <div
@@ -35,16 +36,22 @@ export default function GameCard({ game, selected, onToggleSelect, onOpen }) {
         <div className="game-card-title" title={game.name}>{game.name}</div>
         <div className="game-card-tags">
           <span className="tag tag-platform">{game.platform === '__custom__' ? game.platformCustom : game.platform}</span>
-          <span className="tag tag-region">{game.region}</span>
+          {regions.map((r) => (
+            <span key={r} className="tag tag-region">{r}</span>
+          ))}
           <span className="tag tag-condition">{game.condition}</span>
         </div>
         <div className="game-card-prices">
           <div className="price-row">
-            <span className="price-label">Offline</span>
+            <span className="price-label">Beli</span>
+            <span className="price-value">{formatPrice(game.buyPrice)}</span>
+          </div>
+          <div className="price-row">
+            <span className="price-label">Jual</span>
             <span className="price-value">{formatPrice(game.sellPriceOffline)}</span>
           </div>
           <div className="price-row">
-            <span className="price-label">Shopee</span>
+            <span className="price-label">Setting Shopee</span>
             <span className="price-value">{formatPrice(game.sellPriceShopee)}</span>
           </div>
         </div>

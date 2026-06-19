@@ -5,7 +5,7 @@ const NAV_ITEMS = [
   { key: 'best-seller', label: 'Best Seller', icon: '⭐' }
 ];
 
-export default function Sidebar({ activePage, onNavigate }) {
+export default function Sidebar({ activePage, onNavigate, onSettings }) {
   return (
     <div className="sidebar">
       <div className="sidebar-logo">
@@ -24,6 +24,14 @@ export default function Sidebar({ activePage, onNavigate }) {
       ))}
 
       <div className="sidebar-footer">
+        <button
+          className="btn btn-sm"
+          style={{ marginBottom: 8, width: '100%' }}
+          onClick={onSettings}
+          title="Pengaturan Aplikasi"
+        >
+          ⚙️ Pengaturan
+        </button>
         Catalog Manager v1.0
         <br />
         Database lokal &middot; Offline

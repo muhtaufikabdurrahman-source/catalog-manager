@@ -58,5 +58,9 @@ contextBridge.exposeInMainWorld('api', {
   },
   meta: {
     getDbPath: () => invoke('meta:getDbPath')
+  },
+  settings: {
+    get: (key) => invoke('settings:get', key),
+    set: (key, value) => invoke('settings:set', key, value)
   }
 });

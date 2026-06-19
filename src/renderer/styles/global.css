@@ -748,3 +748,41 @@ input, select, textarea {
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
 }
+
+/* ---------- Region multi-select chips ---------- */
+.region-multiselect {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.region-chip {
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.region-chip:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.region-chip.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+/* ---------- Price row label adjustment ---------- */
+.price-label {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  min-width: 80px;
+}

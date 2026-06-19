@@ -137,7 +137,7 @@ export default function CatalogPage() {
             </select>
             <select className="select-input" value={condition} onChange={(e) => setCondition(e.target.value)}>
               <option value="">Semua Kondisi</option>
-              {CONDITIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+              {CONDITIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
             <select className="select-input" value={`${sortBy}:${sortDir}`} onChange={(e) => {
               const parts = e.target.value.split(':');

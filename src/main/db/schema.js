@@ -1,10 +1,4 @@
 // src/main/db/schema.js
-//
-// Skema database + sistem migrasi sederhana berbasis "user_version" SQLite.
-// Setiap kali skema berubah di masa depan, tambahkan entri baru ke array
-// MIGRATIONS di bawah ini -- jangan ubah migrasi yang sudah ada agar database
-// pengguna lama tetap bisa di-upgrade dengan aman.
-
 const MIGRATIONS = [
   // ---- versi 1: skema awal ----
   `
@@ -12,15 +6,15 @@ const MIGRATIONS = [
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     platform TEXT NOT NULL,
-    platform_custom TEXT,           -- diisi jika platform = '__custom__'
+    platform_custom TEXT,
     region TEXT NOT NULL,
     condition TEXT NOT NULL,
     buy_price REAL NOT NULL DEFAULT 0,
     sell_price_offline REAL NOT NULL DEFAULT 0,
     sell_price_shopee REAL NOT NULL DEFAULT 0,
     notes TEXT,
-    cover_image_id TEXT,            -- FK logis ke images.id (cover terpilih)
-    is_deleted INTEGER NOT NULL DEFAULT 0,  -- soft delete untuk mendukung undo
+    cover_image_id TEXT,
+    is_deleted INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
@@ -31,8 +25,8 @@ const MIGRATIONS = [
     sort_order INTEGER NOT NULL DEFAULT 0,
     mime_type TEXT NOT NULL,
     original_name TEXT,
-    full_data BLOB NOT NULL,        -- gambar utama (dikompres, long-edge ~1600px)
-    thumb_data BLOB NOT NULL,       -- thumbnail kecil (~300px) untuk grid view
+    full_data BLOB NOT NULL,
+    thumb_data BLOB NOT NULL,
     width INTEGER,
     height INTEGER,
     byte_size INTEGER,
@@ -43,7 +37,7 @@ const MIGRATIONS = [
   CREATE TABLE price_history (
     id TEXT PRIMARY KEY,
     game_id TEXT NOT NULL,
-    field TEXT NOT NULL,            -- 'buy_price' | 'sell_price_offline' | 'sell_price_shopee'
+    field TEXT NOT NULL,
     old_value REAL,
     new_value REAL,
     changed_at TEXT NOT NULL,
@@ -55,7 +49,7 @@ const MIGRATIONS = [
     game_name TEXT NOT NULL,
     platform TEXT NOT NULL,
     region TEXT NOT NULL,
-    priority INTEGER NOT NULL DEFAULT 0,   -- makin tinggi makin prioritas dicari
+    priority INTEGER NOT NULL DEFAULT 0,
     buy_price REAL,
     notes TEXT,
     created_at TEXT NOT NULL,
@@ -64,8 +58,8 @@ const MIGRATIONS = [
 
   CREATE TABLE undo_log (
     id TEXT PRIMARY KEY,
-    action_type TEXT NOT NULL,      -- 'create' | 'update' | 'delete' | 'bulk_update' | 'bulk_delete'
-    payload TEXT NOT NULL,          -- JSON: snapshot data sebelum & sesudah, untuk undo/redo
+    action_type TEXT NOT NULL,
+    payload TEXT NOT NULL,
     created_at TEXT NOT NULL,
     is_undone INTEGER NOT NULL DEFAULT 0
   );
@@ -75,7 +69,6 @@ const MIGRATIONS = [
     value TEXT
   );
 
-  -- Indeks untuk pencarian & sort instan walau data sudah puluhan ribu baris.
   CREATE INDEX idx_games_name ON games(name);
   CREATE INDEX idx_games_platform ON games(platform);
   CREATE INDEX idx_games_region ON games(region);
@@ -91,7 +84,6 @@ const MIGRATIONS = [
   CREATE INDEX idx_price_history_game_id ON price_history(game_id);
   CREATE INDEX idx_best_seller_priority ON best_seller(priority);
 
-  -- FTS5 virtual table untuk realtime search yang cepat di skala besar.
   CREATE VIRTUAL TABLE games_fts USING fts5(
     name,
     platform,
@@ -116,16 +108,16 @@ const MIGRATIONS = [
     INSERT INTO games_fts(rowid, name, platform, region)
     VALUES (new.rowid, new.name, new.platform, new.region);
   END;
+  `,
+
+  // ---- versi 2: app_meta seed untuk shopee_admin_fee ----
+  `
+  INSERT OR IGNORE INTO app_meta (key, value) VALUES ('shopee_admin_fee', '8');
   `
 ];
 
-/**
- * Menjalankan semua migrasi yang belum diterapkan pada koneksi db yang diberikan.
- * Menggunakan PRAGMA user_version sebagai penanda versi skema saat ini.
- */
 function runMigrations(db) {
   const currentVersion = db.pragma('user_version', { simple: true });
-
   for (let i = currentVersion; i < MIGRATIONS.length; i++) {
     const migrationSql = MIGRATIONS[i];
     const tx = db.transaction(() => {

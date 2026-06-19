@@ -13,6 +13,15 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function parseRegion(region) {
+  if (!region) return [];
+  try {
+    const parsed = JSON.parse(region);
+    if (Array.isArray(parsed)) return parsed;
+  } catch (_) {}
+  return [region];
+}
+
 function rowToGame(row) {
   if (!row) return null;
   return {
@@ -20,7 +29,7 @@ function rowToGame(row) {
     name: row.name,
     platform: row.platform,
     platformCustom: row.platform_custom,
-    region: row.region,
+    region: parseRegion(row.region),
     condition: row.condition,
     buyPrice: row.buy_price,
     sellPriceOffline: row.sell_price_offline,
@@ -61,7 +70,7 @@ function createGame(input) {
     input.name,
     input.platform,
     input.platformCustom || null,
-    input.region,
+    JSON.stringify(Array.isArray(input.region) ? input.region : [input.region]),
     input.condition,
     input.buyPrice || 0,
     input.sellPriceOffline || 0,
@@ -119,7 +128,7 @@ function updateGame(id, input) {
       input.name ?? existing.name,
       input.platform ?? existing.platform,
       input.platformCustom !== undefined ? input.platformCustom : existing.platform_custom,
-      input.region ?? existing.region,
+      (input.region !== undefined ? JSON.stringify(Array.isArray(input.region) ? input.region : [input.region]) : existing.region),
       input.condition ?? existing.condition,
       input.buyPrice ?? existing.buy_price,
       input.sellPriceOffline ?? existing.sell_price_offline,
@@ -232,8 +241,10 @@ function listGames(options = {}) {
     params.platform = platform;
   }
   if (region) {
-    where.push('g.region = @region');
-    params.region = region;
+    // region stored as JSON array string; match if it contains the region value
+    where.push("(g.region = @regionExact OR g.region LIKE @regionLike)");
+    params.regionExact = JSON.stringify([region]);
+    params.regionLike = '%"' + region + '"%';
   }
   if (condition) {
     where.push('g.condition = @condition');

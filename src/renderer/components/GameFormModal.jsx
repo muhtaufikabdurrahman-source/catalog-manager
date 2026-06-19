@@ -1,13 +1,31 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { PLATFORMS, REGIONS, CONDITIONS } from '@shared/constants.json';
 import ImageUploader from './ImageUploader.jsx';
+
+// Fungsi pembulatan ke 5000 terdekat:
+// sisa < 2000 → turun, sisa >= 2000 → naik
+function roundTo5000(value) {
+  if (!value || value <= 0) return value;
+  const sisa = value % 5000;
+  if (sisa === 0) return value;
+  if (sisa < 2000) return value - sisa;
+  return value + (5000 - sisa);
+}
+
+function calcShopeePrice(jualOffline, adminFeePercent) {
+  if (!jualOffline || jualOffline <= 0) return 0;
+  const fee = parseFloat(adminFeePercent) || 0;
+  if (fee <= 0 || fee >= 100) return jualOffline;
+  const raw = jualOffline / (1 - fee / 100);
+  return roundTo5000(Math.round(raw));
+}
 
 const emptyForm = {
   name: '',
   platform: PLATFORMS[0],
   platformCustom: '',
-  region: REGIONS[0],
-  condition: CONDITIONS[0],
+  regions: [],
+  condition: CONDITIONS[0].value,
   buyPrice: '',
   sellPriceOffline: '',
   sellPriceShopee: '',
@@ -25,8 +43,8 @@ function formatDateTime(iso) {
 
 const FIELD_LABELS = {
   buy_price: 'Harga Beli',
-  sell_price_offline: 'Harga Jual Offline',
-  sell_price_shopee: 'Harga Jual Shopee'
+  sell_price_offline: 'Jual Offline',
+  sell_price_shopee: 'Setting Shopee'
 };
 
 export default function GameFormModal({ game, onClose, onSaved }) {
@@ -37,15 +55,25 @@ export default function GameFormModal({ game, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [history, setHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [adminFee, setAdminFee] = useState(8);
+  const [shopeeManual, setShopeeManual] = useState(false);
+
+  // Load admin fee dari settings
+  useEffect(() => {
+    window.api.settings.get('shopee_admin_fee').then((val) => {
+      if (val !== null) setAdminFee(parseFloat(val) || 8);
+    });
+  }, []);
 
   useEffect(() => {
     if (game) {
+      const regions = Array.isArray(game.region) ? game.region : (game.region ? [game.region] : []);
       setForm({
         name: game.name || '',
         platform: game.platform || PLATFORMS[0],
         platformCustom: game.platformCustom || '',
-        region: game.region || REGIONS[0],
-        condition: game.condition || CONDITIONS[0],
+        regions,
+        condition: game.condition || CONDITIONS[0].value,
         buyPrice: game.buyPrice ?? '',
         sellPriceOffline: game.sellPriceOffline ?? '',
         sellPriceShopee: game.sellPriceShopee ?? '',
@@ -53,8 +81,19 @@ export default function GameFormModal({ game, onClose, onSaved }) {
       });
       setSavedGameId(game.id);
       setCoverImageId(game.coverImageId);
+      setShopeeManual(true); // edit mode: anggap manual dulu
     }
   }, [game]);
+
+  // Auto-hitung shopee saat jualOffline berubah (jika tidak manual)
+  useEffect(() => {
+    if (shopeeManual) return;
+    const offline = Number(form.sellPriceOffline);
+    if (offline > 0) {
+      const calculated = calcShopeePrice(offline, adminFee);
+      setForm((prev) => ({ ...prev, sellPriceShopee: calculated }));
+    }
+  }, [form.sellPriceOffline, adminFee, shopeeManual]);
 
   async function loadHistory() {
     if (!savedGameId) return;
@@ -67,9 +106,33 @@ export default function GameFormModal({ game, onClose, onSaved }) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
+  function handleOfflineChange(value) {
+    setShopeeManual(false);
+    setForm((prev) => ({ ...prev, sellPriceOffline: value }));
+  }
+
+  function handleShopeeChange(value) {
+    setShopeeManual(true);
+    setForm((prev) => ({ ...prev, sellPriceShopee: value }));
+  }
+
+  function toggleRegion(region) {
+    setForm((prev) => {
+      const current = prev.regions;
+      if (current.includes(region)) {
+        return { ...prev, regions: current.filter((r) => r !== region) };
+      }
+      return { ...prev, regions: [...current, region] };
+    });
+  }
+
   async function handleSave(closeAfter) {
     if (!form.name.trim()) {
       alert('Nama game wajib diisi.');
+      return;
+    }
+    if (form.regions.length === 0) {
+      alert('Pilih minimal satu region.');
       return;
     }
     setSaving(true);
@@ -78,7 +141,7 @@ export default function GameFormModal({ game, onClose, onSaved }) {
         name: form.name.trim(),
         platform: form.platform,
         platformCustom: form.platform === '__custom__' ? form.platformCustom.trim() : null,
-        region: form.region,
+        region: form.regions,
         condition: form.condition,
         buyPrice: form.buyPrice === '' ? 0 : Number(form.buyPrice),
         sellPriceOffline: form.sellPriceOffline === '' ? 0 : Number(form.sellPriceOffline),
@@ -102,6 +165,8 @@ export default function GameFormModal({ game, onClose, onSaved }) {
       setSaving(false);
     }
   }
+
+  const currentCondition = CONDITIONS.find((c) => c.value === form.condition);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -142,16 +207,39 @@ export default function GameFormModal({ game, onClose, onSaved }) {
             </div>
             <div className="form-group">
               <label className="form-label">Region</label>
-              <select className="form-select" value={form.region} onChange={(e) => update('region', e.target.value)}>
-                {REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
-              </select>
+              <div className="region-multiselect">
+                {REGIONS.map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    className={`region-chip ${form.regions.includes(r) ? 'active' : ''}`}
+                    onClick={() => toggleRegion(r)}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+              {form.regions.length === 0 && (
+                <div className="form-hint" style={{ color: 'var(--color-danger, #e53e3e)', marginTop: 4 }}>
+                  Pilih minimal satu region
+                </div>
+              )}
             </div>
           </div>
 
           <div className="form-group">
             <label className="form-label">Kondisi</label>
-            <select className="form-select" value={form.condition} onChange={(e) => update('condition', e.target.value)}>
-              {CONDITIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+            <select
+              className="form-select"
+              value={form.condition}
+              onChange={(e) => update('condition', e.target.value)}
+              style={{ maxWidth: '100%' }}
+            >
+              {CONDITIONS.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}{'  —  '}{c.desc}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -172,19 +260,45 @@ export default function GameFormModal({ game, onClose, onSaved }) {
                 type="number"
                 className="form-input"
                 value={form.sellPriceOffline}
-                onChange={(e) => update('sellPriceOffline', e.target.value)}
+                onChange={(e) => handleOfflineChange(e.target.value)}
                 placeholder="0"
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Jual Shopee</label>
+              <label className="form-label">
+                Setting Shopee
+                {!shopeeManual && (
+                  <span className="form-hint" style={{ marginLeft: 6, display: 'inline' }}>auto</span>
+                )}
+              </label>
               <input
                 type="number"
                 className="form-input"
                 value={form.sellPriceShopee}
-                onChange={(e) => update('sellPriceShopee', e.target.value)}
+                onChange={(e) => handleShopeeChange(e.target.value)}
                 placeholder="0"
               />
+              <div className="form-hint" style={{ marginTop: 4 }}>
+                Admin {adminFee}% · bulatkan 5rb
+                {!shopeeManual && form.sellPriceOffline > 0 && (
+                  <button
+                    type="button"
+                    style={{ marginLeft: 8, fontSize: 11, color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                    onClick={() => setShopeeManual(false)}
+                  >
+                    ↺ reset auto
+                  </button>
+                )}
+                {shopeeManual && form.sellPriceOffline > 0 && (
+                  <button
+                    type="button"
+                    style={{ marginLeft: 8, fontSize: 11, color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                    onClick={() => { setShopeeManual(false); }}
+                  >
+                    ↺ auto
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 

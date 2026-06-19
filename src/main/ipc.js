@@ -93,6 +93,20 @@ function registerIpcHandlers() {
 
   // ---- Meta ----
   ipcMain.handle('meta:getDbPath', async () => getDbPath());
+
+  // ---- App Settings ----
+  ipcMain.handle('settings:get', async (_e, key) => {
+    const { getDb } = require('./db/connection');
+    const db = getDb();
+    const row = db.prepare('SELECT value FROM app_meta WHERE key = ?').get(key);
+    return row ? row.value : null;
+  });
+  ipcMain.handle('settings:set', async (_e, key, value) => {
+    const { getDb } = require('./db/connection');
+    const db = getDb();
+    db.prepare('INSERT OR REPLACE INTO app_meta (key, value) VALUES (?, ?)').run(key, String(value));
+    return { success: true };
+  });
 }
 
 module.exports = { registerIpcHandlers };

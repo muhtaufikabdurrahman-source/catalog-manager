@@ -57,7 +57,7 @@ export default function GameTable({ games, selectedIds, onToggleSelect, onToggle
             <td><RowThumb game={game} /></td>
             <td>{game.name}</td>
             <td>{game.platform === '__custom__' ? game.platformCustom : game.platform}</td>
-            <td>{game.region}</td>
+            <td>{(Array.isArray(game.region) ? game.region : [game.region]).join(", ")}</td>
             <td>{formatPrice(game.buyPrice)}</td>
             <td>{formatPrice(game.sellPriceOffline)}</td>
             <td>{formatPrice(game.sellPriceShopee)}</td>
