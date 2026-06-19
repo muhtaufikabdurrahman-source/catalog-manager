@@ -1,0 +1,39 @@
+name: Build Windows App
+
+# Workflow ini berjalan otomatis di server Windows milik GitHub (gratis untuk
+# repo publik & ada kuota gratis untuk repo privat). Tidak perlu komputer
+# Windows sama sekali -- cukup push kode, lalu unduh hasil build dari tab
+# "Actions" > pilih run terbaru > bagian "Artifacts" di bawah halaman.
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch: {}   # juga bisa dijalankan manual lewat tombol "Run workflow"
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout kode
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies (termasuk compile native module untuk Electron)
+        run: npm install
+
+      - name: Build installer (.exe) dan portable (.zip)
+        run: npm run build:electron
+
+      - name: Upload hasil build sebagai artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: catalog-manager-windows
+          path: |
+            dist_installer/*.exe
+            dist_installer/*.zip
+          if-no-files-found: error

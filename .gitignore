@@ -1,0 +1,13 @@
+node_modules/
+dist/
+dist_installer/
+*.log
+.DS_Store
+Thumbs.db
+build/icon_source.png
+
+# Database lokal saat development (jangan ikut commit data pribadi)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm

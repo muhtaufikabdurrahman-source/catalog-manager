@@ -1,0 +1,15 @@
+{
+  "PLATFORMS": ["PS1", "PS2", "PS3", "PS4", "PS5", "PSP", "PSVita", "NDS", "3DS", "Switch"],
+  "REGIONS": ["USA", "EUR", "JAP", "ASIA"],
+  "CONDITIONS": ["Loose", "CIB", "Sealed"],
+  "SORT_FIELDS": [
+    { "key": "name", "label": "Nama" },
+    { "key": "platform", "label": "Platform" },
+    { "key": "region", "label": "Region" },
+    { "key": "buy_price", "label": "Harga Beli" },
+    { "key": "sell_price_offline", "label": "Harga Jual Offline" },
+    { "key": "sell_price_shopee", "label": "Harga Jual Shopee" },
+    { "key": "created_at", "label": "Tanggal Ditambahkan" },
+    { "key": "updated_at", "label": "Tanggal Update" }
+  ]
+}
