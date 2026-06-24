@@ -6,6 +6,41 @@ function formatPrice(value) {
   return 'Rp' + Number(value).toLocaleString('id-ID');
 }
 
+// Badge "Baru Segel" / "Second" — watermark minimalis di pojok kiri bawah foto
+function ConditionBadge({ condition }) {
+  const isSealed = condition === 'Sealed';
+  const isSecond = ['Loose', 'CIB', 'CIB+'].includes(condition);
+  if (!isSealed && !isSecond) return null;
+
+  const label = isSealed ? 'Baru Segel' : 'Second';
+  const bg = isSealed
+    ? 'rgba(22, 163, 74, 0.82)'  // hijau
+    : 'rgba(30, 64, 175, 0.78)'; // biru
+
+  return (
+    <div style={{
+      position: 'absolute',
+      bottom: 5,
+      left: 5,
+      background: bg,
+      color: '#fff',
+      fontSize: 9,
+      fontWeight: 700,
+      letterSpacing: '0.06em',
+      padding: '2px 7px',
+      borderRadius: 4,
+      backdropFilter: 'blur(2px)',
+      pointerEvents: 'none',
+      userSelect: 'none',
+      textTransform: 'uppercase',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.35)',
+      lineHeight: 1.5
+    }}>
+      {label}
+    </div>
+  );
+}
+
 export default function GameCard({ game, selected, onToggleSelect, onOpen, onToggleBestSeller }) {
   const { src, elRef } = useLazyThumbnail(game.coverImageId);
   const regions = Array.isArray(game.region) ? game.region : [game.region];
@@ -29,7 +64,6 @@ export default function GameCard({ game, selected, onToggleSelect, onOpen, onTog
         onChange={() => onToggleSelect(game.id)}
       />
 
-      {/* Tombol toggle best seller */}
       <button
         className="game-card-star"
         title={game.isBestSeller ? 'Hapus dari Best Seller' : 'Tandai Best Seller'}
@@ -38,11 +72,18 @@ export default function GameCard({ game, selected, onToggleSelect, onOpen, onTog
         {game.isBestSeller ? '⭐' : '☆'}
       </button>
 
-      <div className="game-card-cover">
+      {/* Cover foto + badge kondisi */}
+      <div className="game-card-cover" style={{ position: 'relative' }}>
         {game.coverImageId ? (
-          src ? <img src={src} alt={game.name} /> : <div className="placeholder">Memuat...</div>
+          src
+            ? <img src={src} alt={game.name} />
+            : <div className="placeholder">Memuat...</div>
         ) : (
           <div className="placeholder">Tidak ada foto</div>
+        )}
+        {/* Badge hanya muncul jika ada foto */}
+        {game.coverImageId && src && (
+          <ConditionBadge condition={game.condition} />
         )}
       </div>
 

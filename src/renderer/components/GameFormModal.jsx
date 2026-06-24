@@ -1,9 +1,7 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { PLATFORMS, REGIONS, CONDITIONS } from '@shared/constants.json';
 import ImageUploader from './ImageUploader.jsx';
 
-// Fungsi pembulatan ke 5000 terdekat:
-// sisa < 2000 → turun, sisa >= 2000 → naik
 function roundTo5000(value) {
   if (!value || value <= 0) return value;
   const sisa = value % 5000;
@@ -58,7 +56,9 @@ export default function GameFormModal({ game, onClose, onSaved }) {
   const [adminFee, setAdminFee] = useState(8);
   const [shopeeManual, setShopeeManual] = useState(false);
 
-  // Load admin fee dari settings
+  // Ref untuk memanggil flushPending dari ImageUploader
+  const pendingRef = useRef(null);
+
   useEffect(() => {
     window.api.settings.get('shopee_admin_fee').then((val) => {
       if (val !== null) setAdminFee(parseFloat(val) || 8);
@@ -81,11 +81,10 @@ export default function GameFormModal({ game, onClose, onSaved }) {
       });
       setSavedGameId(game.id);
       setCoverImageId(game.coverImageId);
-      setShopeeManual(true); // edit mode: anggap manual dulu
+      setShopeeManual(true);
     }
   }, [game]);
 
-  // Auto-hitung shopee saat jualOffline berubah (jika tidak manual)
   useEffect(() => {
     if (shopeeManual) return;
     const offline = Number(form.sellPriceOffline);
@@ -157,6 +156,11 @@ export default function GameFormModal({ game, onClose, onSaved }) {
         setSavedGameId(result.id);
       }
 
+      // Upload foto pending (jika ada) ke game yang baru saja disimpan
+      if (pendingRef.current) {
+        await pendingRef.current(result.id);
+      }
+
       onSaved(result);
       if (closeAfter) onClose();
     } catch (err) {
@@ -166,11 +170,17 @@ export default function GameFormModal({ game, onClose, onSaved }) {
     }
   }
 
-  const currentCondition = CONDITIONS.find((c) => c.value === form.condition);
+  // Bug 2 fix: gunakan onMouseDown + cek target untuk tutup modal,
+  // lebih reliable di Electron daripada onClick pada overlay
+  function handleOverlayMouseDown(e) {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-panel" style={{ maxWidth: 760 }} onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay" onMouseDown={handleOverlayMouseDown}>
+      <div className="modal-panel" style={{ maxWidth: 760 }} onMouseDown={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">{isEdit ? 'Edit Game' : 'Tambah Game'}</div>
           <button className="btn btn-icon" onClick={onClose}>×</button>
@@ -280,15 +290,6 @@ export default function GameFormModal({ game, onClose, onSaved }) {
               />
               <div className="form-hint" style={{ marginTop: 4 }}>
                 Admin {adminFee}% · bulatkan 5rb
-                {!shopeeManual && form.sellPriceOffline > 0 && (
-                  <button
-                    type="button"
-                    style={{ marginLeft: 8, fontSize: 11, color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                    onClick={() => setShopeeManual(false)}
-                  >
-                    ↺ reset auto
-                  </button>
-                )}
                 {shopeeManual && form.sellPriceOffline > 0 && (
                   <button
                     type="button"
@@ -335,19 +336,20 @@ export default function GameFormModal({ game, onClose, onSaved }) {
           <div className="form-group">
             <label className="form-label">Foto Produk</label>
             <div className="form-hint" style={{ marginBottom: 8 }}>
-              {savedGameId ? 'Mendukung multi-foto. Klik foto untuk zoom, atau tandai sebagai cover.' : 'Simpan data dasar terlebih dahulu untuk menambahkan foto.'}
+              Mendukung multi-foto. Klik foto untuk zoom, atau tandai sebagai cover.
             </div>
-            <ImageUploader gameId={savedGameId} coverImageId={coverImageId} onCoverChange={setCoverImageId} />
+            <ImageUploader
+              gameId={savedGameId}
+              coverImageId={coverImageId}
+              onCoverChange={setCoverImageId}
+              pendingRef={pendingRef}
+              condition={form.condition}
+            />
           </div>
         </div>
 
         <div className="modal-footer">
           <button className="btn" onClick={onClose}>Batal</button>
-          {!isEdit && (
-            <button className="btn" disabled={saving} onClick={() => handleSave(false)}>
-              Simpan & Tambah Foto
-            </button>
-          )}
           <button className="btn btn-primary" disabled={saving} onClick={() => handleSave(true)}>
             {saving ? 'Menyimpan...' : 'Simpan & Tutup'}
           </button>

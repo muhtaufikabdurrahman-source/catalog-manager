@@ -21,8 +21,8 @@
   "dependencies": {
     "better-sqlite3": "^11.10.0",
     "exceljs": "^4.4.0",
+    "jimp": "^0.22.12",
     "pdfkit": "^0.15.0",
-    "sharp": "^0.33.5",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
@@ -82,8 +82,7 @@
     },
     "asar": true,
     "asarUnpack": [
-      "**/node_modules/better-sqlite3/**",
-      "**/node_modules/sharp/**"
+      "**/node_modules/better-sqlite3/**"
     ]
   }
 }

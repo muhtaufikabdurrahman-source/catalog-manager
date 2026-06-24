@@ -5,9 +5,13 @@
 // Setiap foto dikompres ke ukuran "full" (long-edge ~1600px) dan dibuat
 // thumbnail kecil (~300px) terpisah agar grid view & lazy loading tetap cepat
 // walau katalog berisi ratusan ribu foto.
+//
+// Menggunakan Jimp (pure JS) sebagai pengganti sharp agar tidak bergantung
+// pada native binary (ffmpeg.dll, libvips) yang sering menyebabkan error
+// saat startup di Windows.
 
 const { randomUUID } = require('crypto');
-const sharp = require('sharp');
+const Jimp = require('jimp');
 const { getDb } = require('./connection');
 
 const FULL_MAX_EDGE = 1600;
@@ -16,32 +20,40 @@ const FULL_JPEG_QUALITY = 80;
 const THUMB_JPEG_QUALITY = 70;
 
 async function compressImage(buffer) {
-  const image = sharp(buffer, { failOn: 'none' });
-  const metadata = await image.metadata();
+  const image = await Jimp.read(Buffer.from(buffer));
 
-  const fullBuffer = await image
-    .clone()
-    .rotate() // auto-orient berdasarkan EXIF sebelum strip metadata
-    .resize({ width: FULL_MAX_EDGE, height: FULL_MAX_EDGE, fit: 'inside', withoutEnlargement: true })
-    .jpeg({ quality: FULL_JPEG_QUALITY, mozjpeg: true })
-    .toBuffer();
+  // Auto-orient sudah ditangani Jimp secara otomatis saat membaca EXIF
 
-  const thumbBuffer = await image
-    .clone()
-    .rotate()
-    .resize({ width: THUMB_MAX_EDGE, height: THUMB_MAX_EDGE, fit: 'inside', withoutEnlargement: true })
-    .jpeg({ quality: THUMB_JPEG_QUALITY, mozjpeg: true })
-    .toBuffer();
+  // Resize full: maksimum 1600px di sisi terpanjang, tidak diperbesar
+  const fullImage = image.clone();
+  const fw = fullImage.getWidth();
+  const fh = fullImage.getHeight();
+  if (fw > FULL_MAX_EDGE || fh > FULL_MAX_EDGE) {
+    fullImage.scaleToFit(FULL_MAX_EDGE, FULL_MAX_EDGE);
+  }
+  fullImage.quality(FULL_JPEG_QUALITY);
+  const fullBuffer = await fullImage.getBufferAsync(Jimp.MIME_JPEG);
 
-  const fullMeta = await sharp(fullBuffer).metadata();
+  // Resize thumbnail: maksimum 300px di sisi terpanjang
+  const thumbImage = image.clone();
+  const tw = thumbImage.getWidth();
+  const th = thumbImage.getHeight();
+  if (tw > THUMB_MAX_EDGE || th > THUMB_MAX_EDGE) {
+    thumbImage.scaleToFit(THUMB_MAX_EDGE, THUMB_MAX_EDGE);
+  }
+  thumbImage.quality(THUMB_JPEG_QUALITY);
+  const thumbBuffer = await thumbImage.getBufferAsync(Jimp.MIME_JPEG);
+
+  // Baca dimensi hasil full dari buffer
+  const fullRead = await Jimp.read(fullBuffer);
 
   return {
     fullBuffer,
     thumbBuffer,
-    width: fullMeta.width,
-    height: fullMeta.height,
-    originalWidth: metadata.width,
-    originalHeight: metadata.height
+    width: fullRead.getWidth(),
+    height: fullRead.getHeight(),
+    originalWidth: fw,
+    originalHeight: fh
   };
 }
 
@@ -76,8 +88,6 @@ async function addImage(gameId, buffer, originalName) {
 }
 
 function listImageMeta(gameId) {
-  // Hanya metadata (TANPA blob) supaya daftar foto ringan dimuat; thumbnail
-  // diambil terpisah per-id lewat getThumbnail (lazy loading).
   const db = getDb();
   const rows = db.prepare(
     `SELECT id, game_id, sort_order, mime_type, original_name, width, height, byte_size, created_at
@@ -118,7 +128,6 @@ function deleteImage(imageId) {
   const tx = db.transaction(() => {
     db.prepare(`DELETE FROM images WHERE id = ?`).run(imageId);
 
-    // Jika foto yang dihapus adalah cover, pilih cover baru otomatis (foto pertama tersisa).
     const game = db.prepare(`SELECT cover_image_id FROM games WHERE id = ?`).get(img.game_id);
     if (game && game.cover_image_id === imageId) {
       const next = db.prepare(`SELECT id FROM images WHERE game_id = ? ORDER BY sort_order ASC LIMIT 1`).get(img.game_id);

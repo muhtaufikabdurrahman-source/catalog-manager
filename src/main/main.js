@@ -5,13 +5,103 @@
 // production), dan mendaftarkan semua IPC handler dari ./ipc.
 
 const path = require('path');
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, Menu, globalShortcut } = require('electron');
 const { registerIpcHandlers } = require('./ipc');
 const { closeDb } = require('./db/connection');
 
 const isDev = process.env.NODE_ENV === 'development';
 
 let mainWindow = null;
+
+// Zoom step dan batas
+const ZOOM_STEP = 0.1;
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 2.0;
+
+function getZoom() {
+  if (!mainWindow) return 1;
+  return mainWindow.webContents.getZoomFactor();
+}
+
+function setZoom(factor) {
+  if (!mainWindow) return;
+  const clamped = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, factor));
+  mainWindow.webContents.setZoomFactor(clamped);
+}
+
+function buildMenu() {
+  const template = [
+    {
+      label: 'File',
+      submenu: [
+        { role: 'quit', label: 'Keluar' }
+      ]
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'selectAll' }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload', label: 'Reload', accelerator: 'CmdOrCtrl+R' },
+        { role: 'forceReload', label: 'Force Reload', accelerator: 'CmdOrCtrl+Shift+R' },
+        ...(isDev ? [{ role: 'toggleDevTools', label: 'Toggle Developer Tools', accelerator: 'CmdOrCtrl+Shift+I' }] : []),
+        { type: 'separator' },
+        {
+          label: 'Actual Size',
+          accelerator: 'CmdOrCtrl+0',
+          click: () => setZoom(1)
+        },
+        {
+          label: 'Zoom In',
+          // Daftarkan dua accelerator: Ctrl+= (tombol fisik +/=) dan Ctrl+Shift+= (Ctrl++)
+          accelerator: 'CmdOrCtrl+=',
+          click: () => setZoom(getZoom() + ZOOM_STEP)
+        },
+        {
+          label: 'Zoom In (+)',
+          accelerator: 'CmdOrCtrl+Plus',
+          visible: false,
+          click: () => setZoom(getZoom() + ZOOM_STEP)
+        },
+        {
+          label: 'Zoom Out',
+          accelerator: 'CmdOrCtrl+-',
+          click: () => setZoom(getZoom() - ZOOM_STEP)
+        },
+        { type: 'separator' },
+        { role: 'togglefullscreen', label: 'Toggle Full Screen', accelerator: 'F11' }
+      ]
+    },
+    {
+      label: 'Window',
+      submenu: [
+        { role: 'minimize' },
+        { role: 'close' }
+      ]
+    },
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'About Catalog Manager',
+          click: () => {}
+        }
+      ]
+    }
+  ];
+
+  return Menu.buildFromTemplate(template);
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -33,6 +123,8 @@ function createWindow() {
 
   mainWindow.once('ready-to-show', () => mainWindow.show());
 
+  Menu.setApplicationMenu(buildMenu());
+
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools({ mode: 'detach' });
@@ -52,6 +144,7 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   closeDb();
+  globalShortcut.unregisterAll();
   if (process.platform !== 'darwin') app.quit();
 });
 
