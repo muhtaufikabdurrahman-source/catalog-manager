@@ -179,9 +179,9 @@ function duplicateGame(id) {
       original.platform_custom,
       original.region,
       original.condition,
-      original.buy_price,
-      original.sell_price_offline,
-      original.sell_price_shopee,
+      0,  // buy_price dikosongkan
+      0,  // sell_price_offline dikosongkan
+      0,  // sell_price_shopee dikosongkan
       original.notes,
       ts,
       ts

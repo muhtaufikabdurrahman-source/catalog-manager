@@ -179,11 +179,20 @@ input, select, textarea {
   flex: 1;
   max-width: 480px;
   position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-box svg {
+  position: absolute;
+  left: 10px;
+  pointer-events: none;
+  flex-shrink: 0;
 }
 
 .search-box input {
   width: 100%;
-  padding: var(--space-2) var(--space-3) var(--space-2) 36px;
+  padding: var(--space-2) var(--space-3) var(--space-2) 34px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface-alt);
@@ -370,6 +379,44 @@ input, select, textarea {
 .game-card-star:hover {
   background: #fff;
   transform: scale(1.15);
+}
+
+/* Tombol duplikat — pojok kanan bawah cover */
+.game-card-duplicate {
+  position: absolute;
+  bottom: var(--space-2);
+  right: var(--space-2);
+  z-index: 3;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.85);
+  border: none;
+  font-size: 13px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  opacity: 0;
+  transition: opacity var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
+}
+
+.game-card:hover .game-card-duplicate {
+  opacity: 1;
+}
+
+.game-card-duplicate:hover {
+  background: #fff;
+  transform: scale(1.15);
+}
+
+/* Drag-over state saat foto dari luar di-drag ke card */
+.game-card.card-drag-over {
+  outline: 2px dashed var(--color-primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(59,130,246,0.15);
 }
 
 .game-card.is-best-seller {
