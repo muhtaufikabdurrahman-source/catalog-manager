@@ -6,13 +6,29 @@ function formatPrice(value) {
   return 'Rp' + Number(value).toLocaleString('id-ID');
 }
 
-// Kondisi → label pendek untuk badge di cover foto
-const CONDITION_BADGE = {
-  'Loose':  { label: 'LOOSE',  style: { background: '#6b7280', color: '#fff' } },
-  'CIB':    { label: 'CIB',    style: { background: '#2563eb', color: '#fff' } },
-  'Sealed': { label: 'SEGEL',  style: { background: '#16a34a', color: '#fff' } },
-  'Second': { label: 'SECOND', style: { background: '#7c3aed', color: '#fff' } },
-};
+function ConditionBadge({ condition }) {
+  const isSealed = condition === 'Sealed';
+  const isSecond = ['Loose', 'CIB', 'CIB+'].includes(condition);
+  if (!isSealed && !isSecond) return null;
+
+  const label = isSealed ? 'Baru Segel' : 'Second';
+  const bg = isSealed ? 'rgba(22, 163, 74, 0.82)' : 'rgba(30, 64, 175, 0.78)';
+
+  return (
+    <div style={{
+      position: 'absolute', bottom: 5, left: 5,
+      background: bg, color: '#fff',
+      fontSize: 9, fontWeight: 700, letterSpacing: '0.06em',
+      padding: '2px 7px', borderRadius: 4,
+      backdropFilter: 'blur(2px)',
+      pointerEvents: 'none', userSelect: 'none',
+      textTransform: 'uppercase',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.35)', lineHeight: 1.5
+    }}>
+      {label}
+    </div>
+  );
+}
 
 function getPriceWarning(game) {
   const buy = game.buyPrice || 0;
@@ -24,21 +40,13 @@ function getPriceWarning(game) {
 }
 
 export default function GameCard({
-  game,
-  selected,
-  onToggleSelect,
-  onOpen,
-  onToggleBestSeller,
-  onDuplicate,
-  isDragOver,
-  isDropUploading,
-  onCardDragOver,
-  onCardDragLeave,
-  onCardDrop,
+  game, selected, onToggleSelect, onOpen,
+  onToggleBestSeller, onDuplicate,
+  isDragOver, isDropUploading,
+  onCardDragOver, onCardDragLeave, onCardDrop
 }) {
   const { src, elRef } = useLazyThumbnail(game.coverImageId);
   const regions = Array.isArray(game.region) ? game.region : [game.region];
-  const badge = CONDITION_BADGE[game.condition];
   const hasWarning = getPriceWarning(game);
 
   return (
@@ -68,15 +76,24 @@ export default function GameCard({
       {/* Bintang Best Seller — pojok kanan atas */}
       <button
         className="game-card-star"
-        onClick={(e) => { e.stopPropagation(); onToggleBestSeller(game.id); }}
         title={game.isBestSeller ? 'Hapus dari Best Seller' : 'Tandai Best Seller'}
+        onClick={(e) => { e.stopPropagation(); onToggleBestSeller?.(game.id); }}
       >
-        {game.isBestSeller ? '★' : '☆'}
+        {game.isBestSeller ? '⭐' : '☆'}
+      </button>
+
+      {/* Tombol duplikat — pojok kanan bawah card, muncul saat hover */}
+      <button
+        className="game-card-duplicate"
+        title="Duplikat game ini"
+        onClick={(e) => { e.stopPropagation(); onDuplicate?.(game.id); }}
+      >
+        ⧉
       </button>
 
       {/* Cover foto */}
-      <div className="game-card-cover">
-        {/* Jangan Dibeli watermark — di area foto, full cover */}
+      <div className="game-card-cover" style={{ position: 'relative' }}>
+        {/* Jangan Dibeli watermark — full cover */}
         {game.jangandibeli && (
           <div className="jangan-dibeli-overlay" aria-hidden="true">
             <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -86,26 +103,26 @@ export default function GameCard({
           </div>
         )}
 
-        {/* Condition badge — pojok kiri bawah cover */}
-        {badge && (
-          <span className="game-card-condition-badge" style={badge.style}>
-            {badge.label}
-          </span>
+        {isDropUploading ? (
+          <div className="placeholder" style={{ fontSize: 11 }}>Mengupload...</div>
+        ) : isDragOver ? (
+          <div className="placeholder" style={{ fontSize: 11, color: 'var(--color-primary)' }}>Lepas untuk tambah foto</div>
+        ) : game.coverImageId ? (
+          src
+            ? <img src={src} alt={game.name} />
+            : <div className="placeholder">Memuat...</div>
+        ) : (
+          <div className="placeholder">Tidak ada foto</div>
+        )}
+
+        {/* Condition badge — hanya tampil jika ada foto */}
+        {game.coverImageId && src && !isDragOver && !isDropUploading && (
+          <ConditionBadge condition={game.condition} />
         )}
 
         {/* Price warning icon — pojok kanan bawah cover */}
         {hasWarning && (
-          <span className="game-card-price-warning" title="Periksa harga: ada ketidaksesuaian harga">
-            ⚠️
-          </span>
-        )}
-
-        {isDropUploading ? (
-          <div className="placeholder">Mengupload...</div>
-        ) : game.coverImageId ? (
-          src ? <img src={src} alt={game.name} /> : <div className="placeholder">Memuat...</div>
-        ) : (
-          <div className="placeholder">Tidak ada foto</div>
+          <span className="game-card-price-warning" title="Periksa harga: ada ketidaksesuaian">⚠️</span>
         )}
       </div>
 
@@ -116,16 +133,8 @@ export default function GameCard({
           <span className="tag tag-platform">
             {game.platform === '__custom__' ? game.platformCustom : game.platform}
           </span>
-          {regions.map((r) => (
-            <span key={r} className="tag tag-region">{r}</span>
-          ))}
+          {regions.map((r) => <span key={r} className="tag tag-region">{r}</span>)}
           <span className="tag tag-condition">{game.condition}</span>
-          {game.isBestSeller && (
-            <span className="tag tag-best-seller">★ Best Seller</span>
-          )}
-          {game.jangandibeli && (
-            <span className="tag tag-jangan-dibeli">JANGAN DIBELI</span>
-          )}
         </div>
         <div className="game-card-prices">
           <div className="price-row">
@@ -142,15 +151,6 @@ export default function GameCard({
           </div>
         </div>
       </div>
-
-      {/* Tombol duplikat — pojok kanan bawah, muncul saat hover */}
-      <button
-        className="game-card-duplicate"
-        onClick={(e) => { e.stopPropagation(); onDuplicate(game.id); }}
-        title="Duplikat kartu ini"
-      >
-        ⧉
-      </button>
     </div>
   );
 }
