@@ -364,21 +364,36 @@ input, select, textarea {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.0);
   border: none;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   padding: 0;
-  transition: background var(--transition-fast), transform var(--transition-fast);
+  opacity: 0;
+  color: rgba(255,255,255,0.7);
+  transition: opacity var(--transition-fast), background var(--transition-fast), transform var(--transition-fast), color var(--transition-fast);
+}
+
+.game-card:hover .game-card-star {
+  opacity: 1;
+  background: rgba(255,255,255,0.85);
 }
 
 .game-card-star:hover {
   background: #fff;
   transform: scale(1.15);
+}
+
+/* Selalu tampil kalau aktif */
+.game-card.is-best-seller .game-card-star {
+  opacity: 1;
+  color: #f59e0b;
+  background: rgba(255,255,255,0.9);
+  text-shadow: 0 0 6px rgba(245,158,11,0.5);
 }
 
 /* Tombol duplikat — pojok kanan bawah cover */
@@ -437,14 +452,12 @@ input, select, textarea {
   pointer-events: none;
   z-index: 5;
   border-radius: inherit;
-  color: rgba(229, 62, 62, 0.28);
+  color: rgba(229, 62, 62, 0.55);
 }
 
 .jangan-dibeli-overlay svg {
-  width: 70%;
-  height: 70%;
-  max-width: 120px;
-  max-height: 120px;
+  width: 90%;
+  height: 90%;
 }
 
 .row-jangan-dibeli td {
@@ -472,6 +485,13 @@ input, select, textarea {
   width: 20px;
   height: 20px;
   accent-color: var(--color-primary);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.game-card-checkbox.always-visible,
+.game-card:hover .game-card-checkbox {
+  opacity: 1;
 }
 
 .game-card-cover {
@@ -482,6 +502,34 @@ input, select, textarea {
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  position: relative;
+}
+
+/* Badge kondisi — pojok kiri bawah cover */
+.game-card-condition-badge {
+  position: absolute;
+  bottom: var(--space-2);
+  left: var(--space-2);
+  z-index: 4;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+}
+
+/* Price warning icon — pojok kanan bawah cover */
+.game-card-price-warning {
+  position: absolute;
+  bottom: var(--space-2);
+  right: var(--space-2);
+  z-index: 4;
+  font-size: 14px;
+  line-height: 1;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
 }
 
 .game-card-cover img {
@@ -532,6 +580,7 @@ input, select, textarea {
 .tag-platform { background: var(--color-primary-soft); color: var(--color-primary); }
 .tag-region { background: var(--color-warning-soft); color: var(--color-warning); }
 .tag-condition { background: var(--color-success-soft); color: var(--color-success); }
+.tag-jangan-dibeli { background: rgba(229,62,62,0.12); color: var(--color-danger, #e53e3e); font-weight: 700; letter-spacing: 0.02em; }
 
 .game-card-prices {
   display: flex;
