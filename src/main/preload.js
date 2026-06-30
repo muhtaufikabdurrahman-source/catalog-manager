@@ -42,6 +42,34 @@ contextBridge.exposeInMainWorld('api', {
   meta: {
     getDbPath: () => invoke('meta:getDbPath'),
   },
+  faq: {
+    list: () => invoke('faq:list'),
+    get: (id) => invoke('faq:get', id),
+    create: (input) => invoke('faq:create', input),
+    update: (id, input) => invoke('faq:update', id, input),
+    remove: (id) => invoke('faq:remove', id),
+    reorder: (orderedIds) => invoke('faq:reorder', orderedIds),
+  },
+  faqImages: {
+    listMeta: (faqId) => invoke('faqImages:listMeta', faqId),
+    add: (faqId, fileBuffer, originalName) => invoke('faqImages:add', faqId, fileBuffer, originalName),
+    getThumbnail: (imageId) => invoke('faqImages:getThumbnail', imageId),
+    getFull: (imageId) => invoke('faqImages:getFull', imageId),
+    remove: (imageId) => invoke('faqImages:remove', imageId),
+    reorder: (faqId, orderedIds) => invoke('faqImages:reorder', faqId, orderedIds),
+  },
+  kasetStores: {
+    list: () => invoke('kasetStores:list'),
+    get: (id) => invoke('kasetStores:get', id),
+    create: (input) => invoke('kasetStores:create', input),
+    update: (id, input) => invoke('kasetStores:update', id, input),
+    remove: (id) => invoke('kasetStores:remove', id),
+    reorder: (orderedIds) => invoke('kasetStores:reorder', orderedIds),
+  },
+  sidebar: {
+    getOrder: () => invoke('sidebar:getOrder'),
+    setOrder: (orderedKeys) => invoke('sidebar:setOrder', orderedKeys),
+  },
   settings: {
     get: (key) => invoke('settings:get', key),
     set: (key, value) => invoke('settings:set', key, value),

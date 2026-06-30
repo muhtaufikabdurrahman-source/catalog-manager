@@ -124,6 +124,55 @@ const MIGRATIONS = [
   // ---- versi 4: flag jangan_dibeli ----
   `
   ALTER TABLE games ADD COLUMN jangan_dibeli INTEGER NOT NULL DEFAULT 0;
+  `,
+
+  // ---- versi 5: rename platform "Switch" -> "Switch 1", tambah menu FAQ &
+  // Tempat Beli Kaset, dan urutan menu sidebar yang bisa diatur ----
+  `
+  UPDATE games SET platform = 'Switch 1' WHERE platform = 'Switch';
+  UPDATE best_seller SET platform = 'Switch 1' WHERE platform = 'Switch';
+
+  CREATE TABLE faq (
+    id TEXT PRIMARY KEY,
+    question TEXT NOT NULL,
+    answer TEXT,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE TABLE faq_images (
+    id TEXT PRIMARY KEY,
+    faq_id TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    mime_type TEXT NOT NULL,
+    original_name TEXT,
+    full_data BLOB NOT NULL,
+    thumb_data BLOB NOT NULL,
+    width INTEGER,
+    height INTEGER,
+    byte_size INTEGER,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (faq_id) REFERENCES faq(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE kaset_stores (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    url TEXT,
+    city TEXT,
+    notes TEXT,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE INDEX idx_faq_sort_order ON faq(sort_order);
+  CREATE INDEX idx_faq_images_faq_id ON faq_images(faq_id);
+  CREATE INDEX idx_kaset_stores_sort_order ON kaset_stores(sort_order);
+
+  INSERT OR IGNORE INTO app_meta (key, value) VALUES
+    ('sidebar_order', '["catalog","best-seller","faq","kaset-stores"]');
   `
 ];
 
@@ -139,4 +188,4 @@ function runMigrations(db) {
   }
 }
 
-module.exports = { runMigrations, SCHEMA_VERSION: MIGRATIONS.length }; // v4
+module.exports = { runMigrations, SCHEMA_VERSION: MIGRATIONS.length }; // v5

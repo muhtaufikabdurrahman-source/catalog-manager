@@ -6,6 +6,10 @@ const gamesRepo = require('./db/gamesRepository');
 const imagesRepo = require('./db/imagesRepository');
 const exportRepo = require('./db/exportRepository');
 const backupRepo = require('./db/backupRepository');
+const faqRepo = require('./db/faqRepository');
+const faqImagesRepo = require('./db/faqImagesRepository');
+const kasetStoresRepo = require('./db/kasetStoresRepository');
+const sidebarRepo = require('./db/sidebarRepository');
 const { getDbPath } = require('./db/connection');
 
 function registerIpcHandlers() {
@@ -101,6 +105,36 @@ function registerIpcHandlers() {
 
   // ---- Meta ----
   ipcMain.handle('meta:getDbPath', async () => getDbPath());
+
+  // ---- FAQ (Pertanyaan) ----
+  ipcMain.handle('faq:list', async () => faqRepo.listFaqs());
+  ipcMain.handle('faq:get', async (_e, id) => faqRepo.getFaqById(id));
+  ipcMain.handle('faq:create', async (_e, input) => faqRepo.createFaq(input));
+  ipcMain.handle('faq:update', async (_e, id, input) => faqRepo.updateFaq(id, input));
+  ipcMain.handle('faq:remove', async (_e, id) => { faqRepo.deleteFaq(id); return { success: true }; });
+  ipcMain.handle('faq:reorder', async (_e, orderedIds) => { faqRepo.reorderFaqs(orderedIds); return { success: true }; });
+
+  ipcMain.handle('faqImages:listMeta', async (_e, faqId) => faqImagesRepo.listFaqImageMeta(faqId));
+  ipcMain.handle('faqImages:add', async (_e, faqId, fileBuffer, originalName) => {
+    const buf = Buffer.from(fileBuffer);
+    return faqImagesRepo.addFaqImage(faqId, buf, originalName);
+  });
+  ipcMain.handle('faqImages:getThumbnail', async (_e, imageId) => faqImagesRepo.getFaqThumbnail(imageId));
+  ipcMain.handle('faqImages:getFull', async (_e, imageId) => faqImagesRepo.getFaqFullImage(imageId));
+  ipcMain.handle('faqImages:remove', async (_e, imageId) => { faqImagesRepo.deleteFaqImage(imageId); return { success: true }; });
+  ipcMain.handle('faqImages:reorder', async (_e, faqId, orderedIds) => { faqImagesRepo.reorderFaqImages(faqId, orderedIds); return { success: true }; });
+
+  // ---- Tempat Beli Kaset ----
+  ipcMain.handle('kasetStores:list', async () => kasetStoresRepo.listStores());
+  ipcMain.handle('kasetStores:get', async (_e, id) => kasetStoresRepo.getStoreById(id));
+  ipcMain.handle('kasetStores:create', async (_e, input) => kasetStoresRepo.createStore(input));
+  ipcMain.handle('kasetStores:update', async (_e, id, input) => kasetStoresRepo.updateStore(id, input));
+  ipcMain.handle('kasetStores:remove', async (_e, id) => { kasetStoresRepo.deleteStore(id); return { success: true }; });
+  ipcMain.handle('kasetStores:reorder', async (_e, orderedIds) => { kasetStoresRepo.reorderStores(orderedIds); return { success: true }; });
+
+  // ---- Urutan menu sidebar ----
+  ipcMain.handle('sidebar:getOrder', async () => sidebarRepo.getSidebarOrder());
+  ipcMain.handle('sidebar:setOrder', async (_e, orderedKeys) => sidebarRepo.setSidebarOrder(orderedKeys));
 
   // ---- Settings ----
   ipcMain.handle('settings:get', async (_e, key) => {

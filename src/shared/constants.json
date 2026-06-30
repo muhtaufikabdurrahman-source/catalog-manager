@@ -1,5 +1,5 @@
 {
-  "PLATFORMS": ["PS1", "PS2", "PS3", "PS4", "PS5", "PSP", "PSVita", "NDS", "3DS", "Switch"],
+  "PLATFORMS": ["PS1", "PS2", "PS3", "PS4", "PS5", "PSP", "PSVita", "NDS", "3DS", "Switch 1", "Switch 2"],
   "REGIONS": ["ALL", "USA", "EUR", "JAP", "ASIA"],
   "CONDITIONS": [
     { "value": "Loose", "label": "Loose", "desc": "Tanpa Box" },

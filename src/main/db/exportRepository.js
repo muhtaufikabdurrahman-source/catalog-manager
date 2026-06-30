@@ -216,7 +216,7 @@ async function importFile(filePath) {
     return out;
   }
 
-  const VALID_PLATFORMS = ['PS1','PS2','PS3','PS4','PS5','PSP','PSVita','NDS','3DS','Switch'];
+  const VALID_PLATFORMS = ['PS1','PS2','PS3','PS4','PS5','PSP','PSVita','NDS','3DS','Switch 1','Switch 2'];
   const VALID_CONDITIONS = ['Loose','CIB','CIB+','Sealed'];
 
   let inserted = 0, updated = 0, skipped = 0;
