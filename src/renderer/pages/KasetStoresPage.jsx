@@ -5,7 +5,19 @@ function StoreFormModal({ store, onClose, onSaved, onDeleted }) {
   const [url, setUrl] = useState(store?.url || '');
   const [city, setCity] = useState(store?.city || '');
   const [notes, setNotes] = useState(store?.notes || '');
+  const [operatingHours, setOperatingHours] = useState(store?.operatingHours || '');
+  const [links, setLinks] = useState(store?.links?.length ? store.links : []);
   const [saving, setSaving] = useState(false);
+
+  function addLink() {
+    setLinks((prev) => [...prev, { label: '', url: '' }]);
+  }
+  function updateLink(index, field, value) {
+    setLinks((prev) => prev.map((l, i) => (i === index ? { ...l, [field]: value } : l)));
+  }
+  function removeLink(index) {
+    setLinks((prev) => prev.filter((_, i) => i !== index));
+  }
 
   async function handleSave() {
     if (!name.trim()) {
@@ -14,10 +26,12 @@ function StoreFormModal({ store, onClose, onSaved, onDeleted }) {
     }
     setSaving(true);
     try {
+      const cleanLinks = links.filter((l) => l.url && l.url.trim());
+      const payload = { name, url, city, notes, operatingHours, links: cleanLinks };
       if (store?.id) {
-        await window.api.kasetStores.update(store.id, { name, url, city, notes });
+        await window.api.kasetStores.update(store.id, payload);
       } else {
-        await window.api.kasetStores.create({ name, url, city, notes });
+        await window.api.kasetStores.create(payload);
       }
       onSaved();
     } finally {
@@ -45,16 +59,47 @@ function StoreFormModal({ store, onClose, onSaved, onDeleted }) {
             <input className="form-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Misalnya: Toko Retro Gamestation" />
           </div>
           <div className="form-group">
-            <label className="form-label">Link / URL</label>
+            <label className="form-label">Link / URL Utama</label>
             <input className="form-input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://shopee.co.id/..." />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Link Tambahan (opsional)</label>
+            {links.map((l, idx) => (
+              <div key={idx} style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+                <input
+                  className="form-input"
+                  style={{ maxWidth: 130 }}
+                  placeholder="Label (Tokopedia, WA, dll)"
+                  value={l.label}
+                  onChange={(e) => updateLink(idx, 'label', e.target.value)}
+                />
+                <input
+                  className="form-input"
+                  placeholder="https://..."
+                  value={l.url}
+                  onChange={(e) => updateLink(idx, 'url', e.target.value)}
+                />
+                <button className="btn btn-icon" onClick={() => removeLink(idx)} title="Hapus link">×</button>
+              </div>
+            ))}
+            <button className="btn btn-sm" onClick={addLink}>+ Tambah Link</button>
           </div>
           <div className="form-group">
             <label className="form-label">Kota</label>
             <input className="form-input" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Jakarta" />
           </div>
           <div className="form-group">
+            <label className="form-label">Jadwal Operasi</label>
+            <input
+              className="form-input"
+              value={operatingHours}
+              onChange={(e) => setOperatingHours(e.target.value)}
+              placeholder="Misalnya: Senin-Sabtu 09.00-17.00"
+            />
+          </div>
+          <div className="form-group">
             <label className="form-label">Catatan</label>
-            <textarea className="form-textarea" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Jam buka, kontak, dll." />
+            <textarea className="form-textarea" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Kontak, syarat COD, dll." />
           </div>
         </div>
         <div className="modal-footer">
@@ -148,9 +193,23 @@ export default function KasetStoresPage() {
                   <div style={{ flex: 1 }}>
                     <span className="accordion-title">{store.name}</span>
                     {store.city && <span className="form-hint" style={{ marginLeft: 8 }}>📍 {store.city}</span>}
-                    {store.url && (
-                      <div style={{ fontSize: 13, marginTop: 2 }}>
-                        <a href="#" onClick={(e) => { e.preventDefault(); window.open(store.url, '_blank'); }}>{store.url}</a>
+                    {store.operatingHours && <span className="form-hint" style={{ marginLeft: 8 }}>🕒 {store.operatingHours}</span>}
+                    {(store.url || store.links?.length > 0) && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+                        {store.url && (
+                          <a href="#" onClick={(e) => { e.preventDefault(); window.open(store.url, '_blank'); }} style={{ fontSize: 13 }}>
+                            {store.url}
+                          </a>
+                        )}
+                        {store.links?.map((l, i) => (
+                          <button
+                            key={i}
+                            className="btn btn-sm"
+                            onClick={() => window.open(l.url, '_blank')}
+                          >
+                            {l.label || `Link ${i + 1}`}
+                          </button>
+                        ))}
                       </div>
                     )}
                     {store.notes && <div className="form-hint" style={{ marginTop: 4 }}>{store.notes}</div>}

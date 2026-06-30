@@ -3,7 +3,8 @@
 Aplikasi desktop Windows untuk mengelola katalog jual-beli game original PlayStation & Nintendo. Berjalan 100% offline, database lokal (SQLite), foto disimpan langsung di database (tidak bergantung path file).
 
 > Status: Milestone 1 selesai -- CRUD game lengkap, database, foto (drag & drop, kompresi otomatis, thumbnail, zoom, cover), grid/list view, search & filter & sort realtime, bulk delete & bulk update harga, riwayat perubahan harga, duplikasi item.
-> Belum tersedia (milestone berikutnya): Import/Export Excel/CSV/PDF, Backup/Restore database, fitur Best Seller, Undo/Redo global.
+> Milestone 2 (perbaikan urgensi) selesai -- landing page FAQ diperbesar, icon kategori FAQ bisa diganti gambar custom, deskripsi kategori FAQ editable langsung dari UI, jadwal operasi & multi-link untuk Tempat Beli Kaset, backup dipastikan & didokumentasikan mencakup FAQ + Tempat Beli Kaset, serta catatan navigasi kode untuk AI (`AI_CODE_MAP.md`).
+> Belum tersedia (milestone berikutnya): Import/Export Excel/CSV/PDF, fitur Best Seller lanjutan, Undo/Redo global.
 
 ---
 

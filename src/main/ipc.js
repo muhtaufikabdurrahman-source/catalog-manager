@@ -8,6 +8,7 @@ const exportRepo = require('./db/exportRepository');
 const backupRepo = require('./db/backupRepository');
 const faqRepo = require('./db/faqRepository');
 const faqImagesRepo = require('./db/faqImagesRepository');
+const faqCategoryRepo = require('./db/faqCategoryRepository');
 const kasetStoresRepo = require('./db/kasetStoresRepository');
 const sidebarRepo = require('./db/sidebarRepository');
 const { getDbPath } = require('./db/connection');
@@ -124,6 +125,17 @@ function registerIpcHandlers() {
   ipcMain.handle('faqImages:getFull', async (_e, imageId) => faqImagesRepo.getFaqFullImage(imageId));
   ipcMain.handle('faqImages:remove', async (_e, imageId) => { faqImagesRepo.deleteFaqImage(imageId); return { success: true }; });
   ipcMain.handle('faqImages:reorder', async (_e, faqId, orderedIds) => { faqImagesRepo.reorderFaqImages(faqId, orderedIds); return { success: true }; });
+
+  // ---- Override Kategori FAQ (deskripsi editable + icon gambar custom) ----
+  ipcMain.handle('faqCategory:getAllSettings', async () => faqCategoryRepo.getAllSettings());
+  ipcMain.handle('faqCategory:upsertDesc', async (_e, category, desc) => faqCategoryRepo.upsertDesc(category, desc));
+  ipcMain.handle('faqCategory:setIcon', async (_e, category, fileBuffer, mimeType) => {
+    const buf = Buffer.from(fileBuffer);
+    return faqCategoryRepo.setIcon(category, buf, mimeType);
+  });
+  ipcMain.handle('faqCategory:removeIcon', async (_e, category) => faqCategoryRepo.removeIcon(category));
+  ipcMain.handle('faqCategory:getIconThumb', async (_e, category) => faqCategoryRepo.getIconThumb(category));
+  ipcMain.handle('faqCategory:getIconFull', async (_e, category) => faqCategoryRepo.getIconFull(category));
 
   // ---- Tempat Beli Kaset ----
   ipcMain.handle('kasetStores:list', async () => kasetStoresRepo.listStores());

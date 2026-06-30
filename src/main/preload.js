@@ -59,6 +59,14 @@ contextBridge.exposeInMainWorld('api', {
     remove: (imageId) => invoke('faqImages:remove', imageId),
     reorder: (faqId, orderedIds) => invoke('faqImages:reorder', faqId, orderedIds),
   },
+  faqCategory: {
+    getAllSettings: () => invoke('faqCategory:getAllSettings'),
+    upsertDesc: (category, desc) => invoke('faqCategory:upsertDesc', category, desc),
+    setIcon: (category, fileBuffer, mimeType) => invoke('faqCategory:setIcon', category, fileBuffer, mimeType),
+    removeIcon: (category) => invoke('faqCategory:removeIcon', category),
+    getIconThumb: (category) => invoke('faqCategory:getIconThumb', category),
+    getIconFull: (category) => invoke('faqCategory:getIconFull', category),
+  },
   kasetStores: {
     list: () => invoke('kasetStores:list'),
     get: (id) => invoke('kasetStores:get', id),

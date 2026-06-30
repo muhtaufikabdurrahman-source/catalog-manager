@@ -3,6 +3,11 @@ import { FAQ_CATEGORIES } from '@shared/constants.json';
 import FaqImageUploader from '../components/FaqImageUploader.jsx';
 import { bufferToDataUrlPublic } from '../hooks/useLazyThumbnail.js';
 
+async function fileToBuffer(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  return new Uint8Array(arrayBuffer);
+}
+
 function categoryMeta(value) {
   return FAQ_CATEGORIES.find((c) => c.value === value) || FAQ_CATEGORIES[FAQ_CATEGORIES.length - 1];
 }
@@ -163,16 +168,121 @@ function FaqAnswerImages({ faqId }) {
   );
 }
 
-function CategoryLanding({ counts, onSelectCategory }) {
+// Satu kartu kategori di landing page FAQ. Mendukung:
+//  - klik kartu (di luar area edit) -> masuk ke daftar pertanyaan kategori
+//  - klik icon -> upload/ganti gambar icon kustom (item #2)
+//  - klik ikon pensil di deskripsi -> edit deskripsi tersimpan ke DB (item #3)
+function CategoryCard({ meta, count, settings, onSelectCategory, onIconChanged, onDescChanged }) {
+  const [editingDesc, setEditingDesc] = useState(false);
+  const [descDraft, setDescDraft] = useState(settings?.desc || meta.desc);
+  const [savingDesc, setSavingDesc] = useState(false);
+  const [uploadingIcon, setUploadingIcon] = useState(false);
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    setDescDraft(settings?.desc || meta.desc);
+  }, [settings?.desc, meta.desc]);
+
+  async function handleIconFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploadingIcon(true);
+    try {
+      const buffer = await fileToBuffer(file);
+      const result = await window.api.faqCategory.setIcon(meta.value, buffer, file.type);
+      onIconChanged(meta.value, result);
+    } finally {
+      setUploadingIcon(false);
+    }
+  }
+
+  async function handleRemoveIcon(e) {
+    e.stopPropagation();
+    const result = await window.api.faqCategory.removeIcon(meta.value);
+    onIconChanged(meta.value, result);
+  }
+
+  async function saveDesc() {
+    setSavingDesc(true);
+    try {
+      const result = await window.api.faqCategory.upsertDesc(meta.value, descDraft);
+      onDescChanged(meta.value, result);
+      setEditingDesc(false);
+    } finally {
+      setSavingDesc(false);
+    }
+  }
+
+  const iconSrc = settings?.thumbSrc || null;
+
+  return (
+    <div className="faq-landing-card" onClick={() => !editingDesc && onSelectCategory(meta.value)}>
+      <div
+        className="faq-landing-icon-wrap"
+        onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+        title="Klik untuk ganti gambar icon"
+      >
+        {iconSrc ? (
+          <img src={iconSrc} alt={meta.label} className="faq-landing-icon-img" />
+        ) : (
+          <div className="faq-landing-icon">{meta.icon}</div>
+        )}
+        <div className="faq-landing-icon-overlay">{uploadingIcon ? '...' : '📷'}</div>
+        {iconSrc && (
+          <button className="faq-landing-icon-remove" onClick={handleRemoveIcon} title="Kembalikan ke icon default">×</button>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={handleIconFile}
+        />
+      </div>
+
+      <div className="faq-landing-title">{meta.label}</div>
+
+      {editingDesc ? (
+        <div className="faq-landing-desc-edit" onClick={(e) => e.stopPropagation()}>
+          <textarea
+            className="form-textarea"
+            rows={3}
+            autoFocus
+            value={descDraft}
+            onChange={(e) => setDescDraft(e.target.value)}
+          />
+          <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginTop: 6 }}>
+            <button className="btn btn-sm" onClick={() => { setEditingDesc(false); setDescDraft(settings?.desc || meta.desc); }}>Batal</button>
+            <button className="btn btn-sm btn-primary" onClick={saveDesc} disabled={savingDesc}>
+              {savingDesc ? 'Menyimpan...' : 'Simpan'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="faq-landing-desc" onClick={(e) => { e.stopPropagation(); setEditingDesc(true); }} title="Klik untuk edit deskripsi">
+          {descDraft} <span className="faq-landing-desc-edit-icon">✎</span>
+        </div>
+      )}
+
+      <div className="faq-landing-count">{count || 0} pertanyaan</div>
+    </div>
+  );
+}
+
+function CategoryLanding({ counts, categorySettings, onSelectCategory, onIconChanged, onDescChanged }) {
   return (
     <div className="faq-landing-grid">
       {FAQ_CATEGORIES.map((c) => (
-        <button key={c.value} className="faq-landing-card" onClick={() => onSelectCategory(c.value)}>
-          <div className="faq-landing-icon">{c.icon}</div>
-          <div className="faq-landing-title">{c.label}</div>
-          <div className="faq-landing-desc">{c.desc}</div>
-          <div className="faq-landing-count">{counts[c.value] || 0} pertanyaan</div>
-        </button>
+        <CategoryCard
+          key={c.value}
+          meta={c}
+          count={counts[c.value]}
+          settings={categorySettings[c.value]}
+          onSelectCategory={onSelectCategory}
+          onIconChanged={onIconChanged}
+          onDescChanged={onDescChanged}
+        />
       ))}
     </div>
   );
@@ -181,6 +291,7 @@ function CategoryLanding({ counts, onSelectCategory }) {
 export default function FaqPage() {
   const [activeCategory, setActiveCategory] = useState(null); // null = landing page
   const [counts, setCounts] = useState({});
+  const [categorySettings, setCategorySettings] = useState({});
   const [faqs, setFaqs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -201,6 +312,36 @@ export default function FaqPage() {
     setCounts(c);
   }, []);
 
+  const fetchCategorySettings = useCallback(async () => {
+    const all = await window.api.faqCategory.getAllSettings();
+    const withThumbs = {};
+    for (const c of FAQ_CATEGORIES) {
+      const s = all[c.value];
+      let thumbSrc = null;
+      if (s?.hasIcon) {
+        const thumb = await window.api.faqCategory.getIconThumb(c.value);
+        if (thumb) thumbSrc = bufferToDataUrlPublic(thumb.data, thumb.mimeType);
+      }
+      withThumbs[c.value] = { ...s, thumbSrc };
+    }
+    setCategorySettings(withThumbs);
+  }, []);
+
+  function handleIconChanged(category, settings) {
+    setCategorySettings((prev) => ({
+      ...prev,
+      [category]: { ...settings, thumbSrc: null }
+    }));
+    fetchCategorySettings();
+  }
+
+  function handleDescChanged(category, settings) {
+    setCategorySettings((prev) => ({
+      ...prev,
+      [category]: { ...prev[category], ...settings }
+    }));
+  }
+
   const fetchFaqs = useCallback(async () => {
     if (!activeCategory) return;
     setLoading(true);
@@ -213,6 +354,7 @@ export default function FaqPage() {
   }, [activeCategory, debouncedSearch]);
 
   useEffect(() => { fetchCounts(); }, [fetchCounts]);
+  useEffect(() => { fetchCategorySettings(); }, [fetchCategorySettings]);
   useEffect(() => { fetchFaqs(); }, [fetchFaqs]);
 
   function handleDragStart(id) { dragIdRef.current = id; }
@@ -251,7 +393,13 @@ export default function FaqPage() {
           <button className="btn btn-primary" onClick={() => setCreating(true)}>+ Tambah Pertanyaan</button>
         </div>
         <div className="content-scroll">
-          <CategoryLanding counts={counts} onSelectCategory={setActiveCategory} />
+          <CategoryLanding
+            counts={counts}
+            categorySettings={categorySettings}
+            onSelectCategory={setActiveCategory}
+            onIconChanged={handleIconChanged}
+            onDescChanged={handleDescChanged}
+          />
         </div>
 
         {creating && (

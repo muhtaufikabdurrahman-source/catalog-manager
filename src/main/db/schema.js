@@ -179,6 +179,28 @@ const MIGRATIONS = [
   `
   ALTER TABLE faq ADD COLUMN category TEXT NOT NULL DEFAULT 'umum';
   CREATE INDEX idx_faq_category ON faq(category);
+  `,
+
+  // ---- versi 7: perbaikan milestone 2 ----
+  // - faq_category_settings: override deskripsi & icon (gambar) per kategori
+  //   FAQ, menggantikan teks/emoji statis di constants.json (item #2 & #3).
+  // - kaset_stores.operating_hours: jadwal operasi terpisah dari catatan
+  //   bebas (item #5).
+  // - kaset_stores.links: daftar multi-link toko dalam format JSON
+  //   [{ "label": "Shopee", "url": "https://..." }, ...] (item #6). Kolom
+  //   `url` lama tetap dipakai sebagai link utama/legacy untuk kompatibilitas.
+  `
+  CREATE TABLE faq_category_settings (
+    category TEXT PRIMARY KEY,
+    desc TEXT,
+    icon_mime TEXT,
+    icon_data BLOB,
+    icon_thumb BLOB,
+    updated_at TEXT NOT NULL
+  );
+
+  ALTER TABLE kaset_stores ADD COLUMN operating_hours TEXT;
+  ALTER TABLE kaset_stores ADD COLUMN links TEXT;
   `
 ];
 
@@ -194,4 +216,4 @@ function runMigrations(db) {
   }
 }
 
-module.exports = { runMigrations, SCHEMA_VERSION: MIGRATIONS.length }; // v6
+module.exports = { runMigrations, SCHEMA_VERSION: MIGRATIONS.length }; // v7

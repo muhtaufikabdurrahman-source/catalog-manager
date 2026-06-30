@@ -155,14 +155,24 @@ export default function CatalogPage() {
   }
 
   // ---- Backup / Restore ----
+  // Backup menyalin seluruh file database SQLite (catalog.db) apa adanya,
+  // sehingga otomatis mencakup SEMUA tabel: katalog game, riwayat harga,
+  // best seller, daftar Pertanyaan (FAQ) beserta gambar jawabannya, dan
+  // daftar Tempat Beli Kaset beserta jadwal operasi & multi-link toko.
+  // Tidak ada langkah tambahan yang diperlukan -- satu file ini sudah utuh.
   async function handleBackup() {
     const result = await window.api.backup.backupTo();
-    if (!result.canceled) alert(`Backup berhasil disimpan ke:\n${result.path}`);
+    if (!result.canceled) {
+      alert(
+        `Backup berhasil disimpan ke:\n${result.path}\n\n` +
+        'Backup ini sudah mencakup seluruh data: katalog game, FAQ (Pertanyaan), dan Tempat Beli Kaset.'
+      );
+    }
   }
 
   async function handleRestore() {
     const ok = confirm(
-      '⚠️ PERHATIAN: Restore akan MENGGANTIKAN semua data saat ini dengan data dari file backup.\n\n' +
+      '⚠️ PERHATIAN: Restore akan MENGGANTIKAN semua data saat ini (termasuk katalog game, FAQ, dan Tempat Beli Kaset) dengan data dari file backup.\n\n' +
       'Pastikan Anda sudah membuat backup data terbaru sebelum melanjutkan.\n\nLanjutkan restore?'
     );
     if (!ok) return;
