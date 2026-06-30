@@ -107,7 +107,8 @@ function registerIpcHandlers() {
   ipcMain.handle('meta:getDbPath', async () => getDbPath());
 
   // ---- FAQ (Pertanyaan) ----
-  ipcMain.handle('faq:list', async () => faqRepo.listFaqs());
+  ipcMain.handle('faq:list', async (_e, options) => faqRepo.listFaqs(options));
+  ipcMain.handle('faq:countByCategory', async () => faqRepo.countByCategory());
   ipcMain.handle('faq:get', async (_e, id) => faqRepo.getFaqById(id));
   ipcMain.handle('faq:create', async (_e, input) => faqRepo.createFaq(input));
   ipcMain.handle('faq:update', async (_e, id, input) => faqRepo.updateFaq(id, input));

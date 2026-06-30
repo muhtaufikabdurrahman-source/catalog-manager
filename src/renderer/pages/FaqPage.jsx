@@ -1,19 +1,16 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { FAQ_CATEGORIES } from '@shared/constants.json';
 import FaqImageUploader from '../components/FaqImageUploader.jsx';
 import { bufferToDataUrlPublic } from '../hooks/useLazyThumbnail.js';
 
-function FaqAnswerImages({ faqId }) {
-  const [count, setCount] = useState(null);
-  useEffect(() => {
-    window.api.faqImages.listMeta(faqId).then((meta) => setCount(meta.length)).catch(() => setCount(0));
-  }, [faqId]);
-  if (!count) return null;
-  return <span className="form-hint" style={{ marginTop: 4 }}>📷 {count} gambar terlampir</span>;
+function categoryMeta(value) {
+  return FAQ_CATEGORIES.find((c) => c.value === value) || FAQ_CATEGORIES[FAQ_CATEGORIES.length - 1];
 }
 
-function FaqFormModal({ faq, onClose, onSaved, onDeleted }) {
+function FaqFormModal({ faq, defaultCategory, onClose, onSaved, onDeleted }) {
   const [question, setQuestion] = useState(faq?.question || '');
   const [answer, setAnswer] = useState(faq?.answer || '');
+  const [category, setCategory] = useState(faq?.category || defaultCategory || 'umum');
   const [savedFaq, setSavedFaq] = useState(faq || null);
   const [saving, setSaving] = useState(false);
 
@@ -26,9 +23,9 @@ function FaqFormModal({ faq, onClose, onSaved, onDeleted }) {
     try {
       let result;
       if (savedFaq?.id) {
-        result = await window.api.faq.update(savedFaq.id, { question, answer });
+        result = await window.api.faq.update(savedFaq.id, { question, answer, category });
       } else {
-        result = await window.api.faq.create({ question, answer });
+        result = await window.api.faq.create({ question, answer, category });
       }
       setSavedFaq(result);
       onSaved(result);
@@ -52,6 +49,14 @@ function FaqFormModal({ faq, onClose, onSaved, onDeleted }) {
           <button className="btn btn-icon" onClick={onClose}>×</button>
         </div>
         <div className="modal-body">
+          <div className="form-group">
+            <label className="form-label">Kategori</label>
+            <select className="form-select" value={category} onChange={(e) => setCategory(e.target.value)}>
+              {FAQ_CATEGORIES.map((c) => (
+                <option key={c.value} value={c.value}>{c.icon} {c.label}</option>
+              ))}
+            </select>
+          </div>
           <div className="form-group">
             <label className="form-label">Pertanyaan</label>
             <input
@@ -97,25 +102,117 @@ function FaqFormModal({ faq, onClose, onSaved, onDeleted }) {
   );
 }
 
+// Daftar foto jawaban dengan caption otomatis "Foto 1, Foto 2, ..." dan
+// bisa diklik untuk zoom (dipakai di tampilan accordion).
+function FaqAnswerImages({ faqId }) {
+  const [images, setImages] = useState([]);
+  const [zoomIndex, setZoomIndex] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    window.api.faqImages.listMeta(faqId).then(async (meta) => {
+      const withThumbs = await Promise.all(
+        meta.map(async (img) => {
+          const thumb = await window.api.faqImages.getThumbnail(img.id);
+          return { ...img, thumbSrc: thumb ? bufferToDataUrlPublic(thumb.data, thumb.mimeType) : null };
+        })
+      );
+      if (active) setImages(withThumbs);
+    });
+    return () => { active = false; };
+  }, [faqId]);
+
+  async function openZoom(index) {
+    const img = images[index];
+    const full = await window.api.faqImages.getFull(img.id);
+    setZoomIndex(index);
+    if (full) {
+      setImages((prev) => prev.map((it, i) => i === index ? { ...it, fullSrc: bufferToDataUrlPublic(full.data, full.mimeType) } : it));
+    }
+  }
+
+  if (images.length === 0) return null;
+
+  const zoomed = zoomIndex !== null ? images[zoomIndex] : null;
+
+  return (
+    <>
+      <div className="image-thumb-list" style={{ marginTop: 12 }}>
+        {images.map((img, idx) => (
+          <div key={img.id} className="faq-thumb-item" style={{ cursor: 'zoom-in' }} onClick={() => openZoom(idx)}>
+            {img.thumbSrc && <img src={img.thumbSrc} alt={`Foto ${idx + 1}`} />}
+            <span className="faq-image-caption">Foto {idx + 1}</span>
+          </div>
+        ))}
+      </div>
+
+      {zoomed && (
+        <div className="zoom-overlay" onClick={() => setZoomIndex(null)}>
+          <button className="zoom-close" onClick={() => setZoomIndex(null)}>×</button>
+          <div style={{ textAlign: 'center' }}>
+            <img
+              src={zoomed.fullSrc || zoomed.thumbSrc}
+              alt={`Foto ${zoomIndex + 1}`}
+              onClick={(e) => e.stopPropagation()}
+            />
+            <div style={{ color: '#fff', marginTop: 8, fontSize: 14 }}>Foto {zoomIndex + 1} dari {images.length}</div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function CategoryLanding({ counts, onSelectCategory }) {
+  return (
+    <div className="faq-landing-grid">
+      {FAQ_CATEGORIES.map((c) => (
+        <button key={c.value} className="faq-landing-card" onClick={() => onSelectCategory(c.value)}>
+          <div className="faq-landing-icon">{c.icon}</div>
+          <div className="faq-landing-title">{c.label}</div>
+          <div className="faq-landing-desc">{c.desc}</div>
+          <div className="faq-landing-count">{counts[c.value] || 0} pertanyaan</div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function FaqPage() {
+  const [activeCategory, setActiveCategory] = useState(null); // null = landing page
+  const [counts, setCounts] = useState({});
   const [faqs, setFaqs] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [expandedId, setExpandedId] = useState(null);
   const [editingFaq, setEditingFaq] = useState(null);
   const [creating, setCreating] = useState(false);
   const dragIdRef = useRef(null);
   const [dragOverId, setDragOverId] = useState(null);
 
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 250);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const fetchCounts = useCallback(async () => {
+    const c = await window.api.faq.countByCategory();
+    setCounts(c);
+  }, []);
+
   const fetchFaqs = useCallback(async () => {
+    if (!activeCategory) return;
     setLoading(true);
     try {
-      const items = await window.api.faq.list();
+      const items = await window.api.faq.list({ category: activeCategory, search: debouncedSearch });
       setFaqs(items);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeCategory, debouncedSearch]);
 
+  useEffect(() => { fetchCounts(); }, [fetchCounts]);
   useEffect(() => { fetchFaqs(); }, [fetchFaqs]);
 
   function handleDragStart(id) { dragIdRef.current = id; }
@@ -140,10 +237,56 @@ export default function FaqPage() {
     });
   }
 
+  function refreshAfterChange() {
+    fetchFaqs();
+    fetchCounts();
+  }
+
+  // ── Landing page (kategori) ────────────────────────────────────────────
+  if (!activeCategory) {
+    return (
+      <>
+        <div className="topbar">
+          <div style={{ fontWeight: 600, fontSize: 15 }}>Pertanyaan (FAQ)</div>
+          <button className="btn btn-primary" onClick={() => setCreating(true)}>+ Tambah Pertanyaan</button>
+        </div>
+        <div className="content-scroll">
+          <CategoryLanding counts={counts} onSelectCategory={setActiveCategory} />
+        </div>
+
+        {creating && (
+          <FaqFormModal
+            onClose={() => setCreating(false)}
+            onSaved={(saved) => { fetchCounts(); }}
+            onDeleted={() => { setCreating(false); fetchCounts(); }}
+          />
+        )}
+      </>
+    );
+  }
+
+  // ── Daftar pertanyaan dalam satu kategori ──────────────────────────────
+  const meta = categoryMeta(activeCategory);
+
   return (
     <>
       <div className="topbar">
-        <div style={{ fontWeight: 600, fontSize: 15 }}>Pertanyaan (FAQ)</div>
+        <button className="btn btn-sm" onClick={() => setActiveCategory(null)}>← Kategori</button>
+        <div className="search-box" style={{ marginLeft: 12 }}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+            style={{ flexShrink: 0, color: 'var(--color-text-muted, #888)' }}>
+            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input
+            placeholder={`Cari pertanyaan ${meta.label}...`}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <span style={{ fontSize: 13, color: 'var(--color-text-muted)', marginLeft: 'auto', marginRight: 12 }}>
+          {meta.icon} {meta.label} · {faqs.length} pertanyaan
+        </span>
         <button className="btn btn-primary" onClick={() => setCreating(true)}>+ Tambah Pertanyaan</button>
       </div>
 
@@ -152,11 +295,8 @@ export default function FaqPage() {
       <div className="content-scroll">
         {faqs.length === 0 && !loading ? (
           <div className="empty-state" style={{ marginTop: 60 }}>
-            <div className="empty-state-icon">❓</div>
-            <div>Belum ada pertanyaan.</div>
-            <div style={{ fontSize: 13, color: 'var(--color-text-faint)' }}>
-              Tambah pertanyaan yang sering ditanyakan pembeli beserta jawabannya.
-            </div>
+            <div className="empty-state-icon">{meta.icon}</div>
+            <div>Belum ada pertanyaan di kategori {meta.label}.</div>
           </div>
         ) : (
           <div className="accordion-list">
@@ -190,7 +330,7 @@ export default function FaqPage() {
                 {expandedId === faq.id && (
                   <div className="accordion-body">
                     <div style={{ whiteSpace: 'pre-wrap' }}>{faq.answer || <em style={{ color: 'var(--color-text-faint)' }}>Belum ada jawaban.</em>}</div>
-                    <FaqAnswerThumbs faqId={faq.id} />
+                    <FaqAnswerImages faqId={faq.id} />
                   </div>
                 )}
               </div>
@@ -202,41 +342,12 @@ export default function FaqPage() {
       {(creating || editingFaq) && (
         <FaqFormModal
           faq={editingFaq}
+          defaultCategory={activeCategory}
           onClose={() => { setCreating(false); setEditingFaq(null); }}
-          onSaved={() => { fetchFaqs(); }}
-          onDeleted={() => { setCreating(false); setEditingFaq(null); fetchFaqs(); }}
+          onSaved={() => { refreshAfterChange(); }}
+          onDeleted={() => { setCreating(false); setEditingFaq(null); refreshAfterChange(); }}
         />
       )}
     </>
-  );
-}
-
-function FaqAnswerThumbs({ faqId }) {
-  const [images, setImages] = useState([]);
-
-  useEffect(() => {
-    let active = true;
-    window.api.faqImages.listMeta(faqId).then(async (meta) => {
-      const withThumbs = await Promise.all(
-        meta.map(async (img) => {
-          const thumb = await window.api.faqImages.getThumbnail(img.id);
-          return { ...img, thumbSrc: thumb ? bufferToDataUrlPublic(thumb.data, thumb.mimeType) : null };
-        })
-      );
-      if (active) setImages(withThumbs);
-    });
-    return () => { active = false; };
-  }, [faqId]);
-
-  if (images.length === 0) return null;
-
-  return (
-    <div className="image-thumb-list" style={{ marginTop: 12 }}>
-      {images.map((img) => (
-        <div key={img.id} className="image-thumb-item">
-          {img.thumbSrc && <img src={img.thumbSrc} alt={img.originalName || ''} />}
-        </div>
-      ))}
-    </div>
   );
 }

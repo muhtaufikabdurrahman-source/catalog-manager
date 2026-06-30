@@ -17,6 +17,7 @@ function rowToFaq(row) {
     id: row.id,
     question: row.question,
     answer: row.answer,
+    category: row.category || 'umum',
     sortOrder: row.sort_order,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -24,13 +25,37 @@ function rowToFaq(row) {
   };
 }
 
-function listFaqs() {
+function listFaqs(options = {}) {
   const db = getDb();
+  const { category = null, search = '' } = options;
+  const where = [];
+  const params = {};
+
+  if (category) {
+    where.push('f.category = @category');
+    params.category = category;
+  }
+  if (search && search.trim()) {
+    where.push('(f.question LIKE @search OR f.answer LIKE @search)');
+    params.search = `%${search.trim()}%`;
+  }
+
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const rows = db.prepare(
     `SELECT f.*, (SELECT COUNT(*) FROM faq_images i WHERE i.faq_id = f.id) as image_count
-     FROM faq f ORDER BY f.sort_order ASC, f.created_at ASC`
-  ).all();
+     FROM faq f ${whereSql} ORDER BY f.sort_order ASC, f.created_at ASC`
+  ).all(params);
   return rows.map(rowToFaq);
+}
+
+function countByCategory() {
+  const db = getDb();
+  const rows = db.prepare(
+    `SELECT category, COUNT(*) as cnt FROM faq GROUP BY category`
+  ).all();
+  const result = {};
+  for (const r of rows) result[r.category] = r.cnt;
+  return result;
 }
 
 function getFaqById(id) {
@@ -47,9 +72,9 @@ function createFaq(input) {
   const sortOrder = maxOrderRow.maxOrder + 1;
 
   db.prepare(
-    `INSERT INTO faq (id, question, answer, sort_order, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?)`
-  ).run(id, input.question, input.answer || null, sortOrder, ts, ts);
+    `INSERT INTO faq (id, question, answer, category, sort_order, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).run(id, input.question, input.answer || null, input.category || 'umum', sortOrder, ts, ts);
 
   return getFaqById(id);
 }
@@ -61,10 +86,11 @@ function updateFaq(id, input) {
   const ts = nowIso();
 
   db.prepare(
-    `UPDATE faq SET question = ?, answer = ?, updated_at = ? WHERE id = ?`
+    `UPDATE faq SET question = ?, answer = ?, category = ?, updated_at = ? WHERE id = ?`
   ).run(
     input.question ?? existing.question,
     input.answer !== undefined ? input.answer : existing.answer,
+    input.category ?? existing.category,
     ts,
     id
   );
@@ -89,6 +115,7 @@ function reorderFaqs(orderedIds) {
 
 module.exports = {
   listFaqs,
+  countByCategory,
   getFaqById,
   createFaq,
   updateFaq,

@@ -43,7 +43,8 @@ contextBridge.exposeInMainWorld('api', {
     getDbPath: () => invoke('meta:getDbPath'),
   },
   faq: {
-    list: () => invoke('faq:list'),
+    list: (options) => invoke('faq:list', options),
+    countByCategory: () => invoke('faq:countByCategory'),
     get: (id) => invoke('faq:get', id),
     create: (input) => invoke('faq:create', input),
     update: (id, input) => invoke('faq:update', id, input),

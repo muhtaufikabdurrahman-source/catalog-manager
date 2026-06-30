@@ -1,6 +1,11 @@
 {
   "PLATFORMS": ["PS1", "PS2", "PS3", "PS4", "PS5", "PSP", "PSVita", "NDS", "3DS", "Switch 1", "Switch 2"],
   "REGIONS": ["ALL", "USA", "EUR", "JAP", "ASIA"],
+  "FAQ_CATEGORIES": [
+    { "value": "nintendo", "label": "Nintendo", "icon": "🎮", "desc": "Pertanyaan seputar kaset Nintendo (Switch, 3DS, NDS, dll)." },
+    { "value": "playstation", "label": "PlayStation", "icon": "🕹️", "desc": "Pertanyaan seputar kaset PlayStation (PS1-PS5, PSP, PSVita)." },
+    { "value": "umum", "label": "Umum", "icon": "💬", "desc": "Pertanyaan umum di luar platform tertentu." }
+  ],
   "CONDITIONS": [
     { "value": "Loose", "label": "Loose", "desc": "Tanpa Box" },
     { "value": "CIB", "label": "CIB", "desc": "Dengan Box" },

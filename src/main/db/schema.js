@@ -173,6 +173,12 @@ const MIGRATIONS = [
 
   INSERT OR IGNORE INTO app_meta (key, value) VALUES
     ('sidebar_order', '["catalog","best-seller","faq","kaset-stores"]');
+  `,
+
+  // ---- versi 6: kategori FAQ (Nintendo / PlayStation / Umum) ----
+  `
+  ALTER TABLE faq ADD COLUMN category TEXT NOT NULL DEFAULT 'umum';
+  CREATE INDEX idx_faq_category ON faq(category);
   `
 ];
 
@@ -188,4 +194,4 @@ function runMigrations(db) {
   }
 }
 
-module.exports = { runMigrations, SCHEMA_VERSION: MIGRATIONS.length }; // v5
+module.exports = { runMigrations, SCHEMA_VERSION: MIGRATIONS.length }; // v6
