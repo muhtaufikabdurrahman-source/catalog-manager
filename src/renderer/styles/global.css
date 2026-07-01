@@ -392,6 +392,10 @@ input, select, textarea {
 }
 
 .faq-landing-card:hover .faq-landing-edit-btn {
+  opacity: 0.85;
+}
+
+.faq-landing-edit-btn:hover {
   opacity: 1;
 }
 
@@ -448,6 +452,16 @@ input, select, textarea {
   font-size: 13px;
   line-height: 1;
   cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.faq-landing-icon-wrap:hover .faq-landing-icon-remove {
+  opacity: 0.85;
+}
+
+.faq-landing-icon-remove:hover {
+  opacity: 1;
 }
 
 .faq-landing-title {

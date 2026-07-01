@@ -32,6 +32,7 @@ async function exportExcel(filePath) {
   const ws = wb.addWorksheet('Katalog Game');
 
   ws.columns = [
+    { header: 'ID (jangan diubah/dihapus)', key: 'id',       width: 10 },
     { header: 'Nama Game',       key: 'name',               width: 35 },
     { header: 'Platform',        key: 'platform',            width: 12 },
     { header: 'Platform Custom', key: 'platform_custom',     width: 16 },
@@ -53,8 +54,13 @@ async function exportExcel(filePath) {
     cell.border = { bottom: { style: 'thin', color: { argb: 'FFBBC4E8' } } };
   });
 
+  // Kolom ID disembunyikan (bukan dihapus) supaya tidak mengganggu user saat
+  // edit manual, tapi tetap ikut ter-export sebagai kunci pencocokan saat import.
+  ws.getColumn('id').hidden = true;
+
   for (const row of rows) {
     ws.addRow({
+      id: row.id,
       name: row.name,
       platform: row.platform === '__custom__' ? row.platform_custom : row.platform,
       platform_custom: row.platform_custom || '',
@@ -91,6 +97,7 @@ async function exportCsv(filePath) {
   ).all();
 
   const headers = [
+    'ID (jangan diubah/dihapus)',
     'Nama Game', 'Platform', 'Platform Custom', 'Region', 'Kondisi',
     'Harga Beli', 'Jual Offline', 'Setting Shopee', 'Best Seller', 'Catatan',
     'Dibuat', 'Diupdate'
@@ -107,6 +114,7 @@ async function exportCsv(filePath) {
   const lines = [headers.map(escCsv).join(',')];
   for (const row of rows) {
     lines.push([
+      row.id,
       row.name,
       row.platform === '__custom__' ? row.platform_custom : row.platform,
       row.platform_custom || '',
@@ -195,6 +203,7 @@ async function importFile(filePath) {
 
   // Normalisasi header alias (mendukung header export kita sendiri)
   const headerMap = {
+    'id (jangan diubah/dihapus)': 'id', 'id': 'id',
     'nama game': 'name', 'name': 'name',
     'platform': 'platform',
     'platform custom': 'platform_custom',
@@ -259,10 +268,21 @@ async function importFile(filePath) {
       const isBestSeller = /^(ya|yes|1|true)$/i.test(String(raw.is_best_seller || '')) ? 1 : 0;
       const notes = String(raw.notes || '').trim() || null;
 
-      // Cari existing berdasarkan nama (case-insensitive) + platform
-      const existing = db.prepare(
-        `SELECT * FROM games WHERE LOWER(TRIM(name)) = LOWER(?) AND platform = ? AND is_deleted = 0`
-      ).get(name, platform);
+      // Cari existing: utamakan match by ID (stabil walau nama/platform diubah
+      // di Excel). Kalau tidak ada kolom ID (file lama) atau ID tidak ketemu,
+      // fallback ke match nama (case-insensitive) + platform seperti sebelumnya.
+      const idRaw = raw.id !== undefined && raw.id !== null ? String(raw.id).trim() : '';
+      let existing = null;
+      if (idRaw) {
+        existing = db.prepare(
+          `SELECT * FROM games WHERE id = ? AND is_deleted = 0`
+        ).get(idRaw);
+      }
+      if (!existing) {
+        existing = db.prepare(
+          `SELECT * FROM games WHERE LOWER(TRIM(name)) = LOWER(?) AND platform = ? AND is_deleted = 0`
+        ).get(name, platform);
+      }
 
       if (existing) {
         // Update
@@ -278,11 +298,13 @@ async function importFile(filePath) {
         }
         db.prepare(
           `UPDATE games SET
-            platform_custom = ?, region = ?, condition = ?,
+            name = ?, platform = ?, platform_custom = ?, region = ?, condition = ?,
             buy_price = ?, sell_price_offline = ?, sell_price_shopee = ?,
             is_best_seller = ?, notes = ?, updated_at = ?
            WHERE id = ?`
         ).run(
+          name,
+          platform,
           platformCustom || null,
           JSON.stringify(regions),
           condition,
