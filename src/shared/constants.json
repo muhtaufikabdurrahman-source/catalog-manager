@@ -21,5 +21,24 @@
     { "key": "sell_price_shopee", "label": "Harga Shopee" },
     { "key": "created_at", "label": "Tanggal Ditambahkan" },
     { "key": "updated_at", "label": "Tanggal Update" }
+  ],
+  "DAYS_OF_WEEK": [
+    { "value": "sen", "label": "Senin" },
+    { "value": "sel", "label": "Selasa" },
+    { "value": "rab", "label": "Rabu" },
+    { "value": "kam", "label": "Kamis" },
+    { "value": "jum", "label": "Jumat" },
+    { "value": "sab", "label": "Sabtu" },
+    { "value": "min", "label": "Minggu" }
+  ],
+  "STORE_LINK_LABELS": [
+    "Shopee",
+    "Tokopedia",
+    "WhatsApp",
+    "Instagram",
+    "Facebook",
+    "TikTok Shop",
+    "Bukalapak",
+    "Lainnya"
   ]
 }

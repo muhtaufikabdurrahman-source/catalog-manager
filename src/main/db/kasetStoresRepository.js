@@ -19,6 +19,16 @@ function parseLinks(raw) {
   }
 }
 
+function parseJsonArray(raw) {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 function rowToStore(row) {
   if (!row) return null;
   return {
@@ -28,7 +38,9 @@ function rowToStore(row) {
     city: row.city,
     notes: row.notes,
     operatingHours: row.operating_hours,
+    operatingDays: parseJsonArray(row.operating_days),
     links: parseLinks(row.links),
+    urlLabel: row.url_label,
     sortOrder: row.sort_order,
     createdAt: row.created_at,
     updatedAt: row.updated_at
@@ -55,11 +67,14 @@ function createStore(input) {
   const linksJson = Array.isArray(input.links) && input.links.length
     ? JSON.stringify(input.links.filter((l) => l && l.url))
     : null;
+  const operatingDaysJson = Array.isArray(input.operatingDays) && input.operatingDays.length
+    ? JSON.stringify(input.operatingDays)
+    : null;
 
   db.prepare(
-    `INSERT INTO kaset_stores (id, name, url, city, notes, operating_hours, links, sort_order, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(id, input.name, input.url || null, input.city || null, input.notes || null, input.operatingHours || null, linksJson, sortOrder, ts, ts);
+    `INSERT INTO kaset_stores (id, name, url, city, notes, operating_hours, operating_days, links, url_label, sort_order, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(id, input.name, input.url || null, input.city || null, input.notes || null, input.operatingHours || null, operatingDaysJson, linksJson, input.urlLabel || null, sortOrder, ts, ts);
 
   return getStoreById(id);
 }
@@ -72,16 +87,21 @@ function updateStore(id, input) {
   const linksJson = input.links !== undefined
     ? (Array.isArray(input.links) && input.links.length ? JSON.stringify(input.links.filter((l) => l && l.url)) : null)
     : existing.links;
+  const operatingDaysJson = input.operatingDays !== undefined
+    ? (Array.isArray(input.operatingDays) && input.operatingDays.length ? JSON.stringify(input.operatingDays) : null)
+    : existing.operating_days;
 
   db.prepare(
-    `UPDATE kaset_stores SET name = ?, url = ?, city = ?, notes = ?, operating_hours = ?, links = ?, updated_at = ? WHERE id = ?`
+    `UPDATE kaset_stores SET name = ?, url = ?, city = ?, notes = ?, operating_hours = ?, operating_days = ?, links = ?, url_label = ?, updated_at = ? WHERE id = ?`
   ).run(
     input.name ?? existing.name,
     input.url !== undefined ? input.url : existing.url,
     input.city !== undefined ? input.city : existing.city,
     input.notes !== undefined ? input.notes : existing.notes,
     input.operatingHours !== undefined ? input.operatingHours : existing.operating_hours,
+    operatingDaysJson,
     linksJson,
+    input.urlLabel !== undefined ? input.urlLabel : existing.url_label,
     ts,
     id
   );

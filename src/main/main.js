@@ -43,6 +43,16 @@ function saveWindowBounds() {
   } catch (_) {}
 }
 
+// Resize/move event Electron bisa fire puluhan kali per detik saat user
+// menyeret window -- menulis ke SQLite di tiap event bikin drag/resize
+// terasa tersendat. Debounce 300ms supaya hanya menulis sekali setelah
+// user berhenti menggerakkan window.
+let saveBoundsTimer = null;
+function saveWindowBoundsDebounced() {
+  clearTimeout(saveBoundsTimer);
+  saveBoundsTimer = setTimeout(saveWindowBounds, 300);
+}
+
 function buildMenu() {
   const template = [
     {
@@ -109,10 +119,11 @@ function createWindow() {
 
   mainWindow.once('ready-to-show', () => mainWindow.show());
 
-  // Simpan posisi/ukuran saat window dipindah atau di-resize
-  mainWindow.on('resize', saveWindowBounds);
-  mainWindow.on('move', saveWindowBounds);
-  mainWindow.on('close', saveWindowBounds);
+  // Simpan posisi/ukuran saat window dipindah atau di-resize (debounced).
+  // Saat ditutup, simpan langsung (non-debounced) supaya tidak hilang.
+  mainWindow.on('resize', saveWindowBoundsDebounced);
+  mainWindow.on('move', saveWindowBoundsDebounced);
+  mainWindow.on('close', () => { clearTimeout(saveBoundsTimer); saveWindowBounds(); });
 
   Menu.setApplicationMenu(buildMenu());
 

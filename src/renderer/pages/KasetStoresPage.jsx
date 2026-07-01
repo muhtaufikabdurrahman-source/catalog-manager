@@ -1,13 +1,70 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { DAYS_OF_WEEK, STORE_LINK_LABELS } from '@shared/constants.json';
+
+function LinkLabelSelect({ value, isCustom, onChangeLabel, onChangeCustom }) {
+  const [isOther, setIsOther] = useState(isCustom || !STORE_LINK_LABELS.includes(value));
+  
+  return (
+    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+      <select
+        className="form-select"
+        style={{ flex: 0 }}
+        value={isOther ? 'Lainnya' : value}
+        onChange={(e) => {
+          if (e.target.value === 'Lainnya') {
+            setIsOther(true);
+          } else {
+            setIsOther(false);
+            onChangeLabel(e.target.value);
+          }
+        }}
+      >
+        {STORE_LINK_LABELS.map((label) => (
+          <option key={label} value={label}>{label}</option>
+        ))}
+      </select>
+      {isOther && (
+        <input
+          className="form-input"
+          style={{ maxWidth: 140 }}
+          placeholder="Label custom"
+          value={isCustom ? value : ''}
+          onChange={(e) => onChangeCustom(e.target.value)}
+        />
+      )}
+    </div>
+  );
+}
+
+function formatOperatingDays(days) {
+  if (!days || days.length === 0) return '';
+  const labels = days.map((d) => {
+    const found = DAYS_OF_WEEK.find((dw) => dw.value === d);
+    return found ? found.label : d;
+  });
+  if (labels.length === 7) return 'Setiap Hari';
+  if (labels.length > 3) return labels.join(', ');
+  return labels.join(', ');
+}
 
 function StoreFormModal({ store, onClose, onSaved, onDeleted }) {
   const [name, setName] = useState(store?.name || '');
   const [url, setUrl] = useState(store?.url || '');
+  const [urlLabel, setUrlLabel] = useState(store?.urlLabel || 'Shopee');
   const [city, setCity] = useState(store?.city || '');
   const [notes, setNotes] = useState(store?.notes || '');
+  const [operatingDays, setOperatingDays] = useState(store?.operatingDays || []);
   const [operatingHours, setOperatingHours] = useState(store?.operatingHours || '');
   const [links, setLinks] = useState(store?.links?.length ? store.links : []);
   const [saving, setSaving] = useState(false);
+
+  function toggleDay(dayValue) {
+    setOperatingDays((prev) =>
+      prev.includes(dayValue)
+        ? prev.filter((d) => d !== dayValue)
+        : [...prev, dayValue]
+    );
+  }
 
   function addLink() {
     setLinks((prev) => [...prev, { label: '', url: '' }]);
@@ -27,7 +84,16 @@ function StoreFormModal({ store, onClose, onSaved, onDeleted }) {
     setSaving(true);
     try {
       const cleanLinks = links.filter((l) => l.url && l.url.trim());
-      const payload = { name, url, city, notes, operatingHours, links: cleanLinks };
+      const payload = {
+        name,
+        url,
+        urlLabel,
+        city,
+        notes,
+        operatingDays,
+        operatingHours,
+        links: cleanLinks
+      };
       if (store?.id) {
         await window.api.kasetStores.update(store.id, payload);
       } else {
@@ -48,7 +114,7 @@ function StoreFormModal({ store, onClose, onSaved, onDeleted }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-panel" style={{ maxWidth: 480 }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal-panel" style={{ maxWidth: 520 }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">{store?.id ? 'Edit Toko' : 'Tambah Toko'}</div>
           <button className="btn btn-icon" onClick={onClose}>×</button>
@@ -63,16 +129,26 @@ function StoreFormModal({ store, onClose, onSaved, onDeleted }) {
             <input className="form-input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://shopee.co.id/..." />
           </div>
           <div className="form-group">
+            <label className="form-label">Label Link Utama</label>
+            <LinkLabelSelect
+              value={urlLabel}
+              isCustom={!STORE_LINK_LABELS.includes(urlLabel)}
+              onChangeLabel={setUrlLabel}
+              onChangeCustom={setUrlLabel}
+            />
+          </div>
+          <div className="form-group">
             <label className="form-label">Link Tambahan (opsional)</label>
             {links.map((l, idx) => (
               <div key={idx} style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-                <input
-                  className="form-input"
-                  style={{ maxWidth: 130 }}
-                  placeholder="Label (Tokopedia, WA, dll)"
-                  value={l.label}
-                  onChange={(e) => updateLink(idx, 'label', e.target.value)}
-                />
+                <div style={{ flex: 0, minWidth: 160 }}>
+                  <LinkLabelSelect
+                    value={l.label}
+                    isCustom={!STORE_LINK_LABELS.includes(l.label)}
+                    onChangeLabel={(v) => updateLink(idx, 'label', v)}
+                    onChangeCustom={(v) => updateLink(idx, 'label', v)}
+                  />
+                </div>
                 <input
                   className="form-input"
                   placeholder="https://..."
@@ -85,17 +161,32 @@ function StoreFormModal({ store, onClose, onSaved, onDeleted }) {
             <button className="btn btn-sm" onClick={addLink}>+ Tambah Link</button>
           </div>
           <div className="form-group">
-            <label className="form-label">Kota</label>
-            <input className="form-input" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Jakarta" />
+            <label className="form-label">Hari Operasi</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: 6 }}>
+              {DAYS_OF_WEEK.map((day) => (
+                <label key={day.value} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={operatingDays.includes(day.value)}
+                    onChange={() => toggleDay(day.value)}
+                  />
+                  <span style={{ fontSize: 13 }}>{day.label}</span>
+                </label>
+              ))}
+            </div>
           </div>
           <div className="form-group">
-            <label className="form-label">Jadwal Operasi</label>
+            <label className="form-label">Jam Operasi</label>
             <input
               className="form-input"
               value={operatingHours}
               onChange={(e) => setOperatingHours(e.target.value)}
-              placeholder="Misalnya: Senin-Sabtu 09.00-17.00"
+              placeholder="Misalnya: 09.00-17.00"
             />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Kota</label>
+            <input className="form-input" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Jakarta" />
           </div>
           <div className="form-group">
             <label className="form-label">Catatan</label>
@@ -193,13 +284,20 @@ export default function KasetStoresPage() {
                   <div style={{ flex: 1 }}>
                     <span className="accordion-title">{store.name}</span>
                     {store.city && <span className="form-hint" style={{ marginLeft: 8 }}>📍 {store.city}</span>}
-                    {store.operatingHours && <span className="form-hint" style={{ marginLeft: 8 }}>🕒 {store.operatingHours}</span>}
+                    {(store.operatingDays?.length > 0 || store.operatingHours) && (
+                      <span className="form-hint" style={{ marginLeft: 8 }}>
+                        🕒 {formatOperatingDays(store.operatingDays)}{store.operatingHours ? ` ${store.operatingHours}` : ''}
+                      </span>
+                    )}
                     {(store.url || store.links?.length > 0) && (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
                         {store.url && (
-                          <a href="#" onClick={(e) => { e.preventDefault(); window.open(store.url, '_blank'); }} style={{ fontSize: 13 }}>
-                            {store.url}
-                          </a>
+                          <button
+                            className="btn btn-sm"
+                            onClick={() => window.open(store.url, '_blank')}
+                          >
+                            {store.urlLabel || 'Link Utama'}
+                          </button>
                         )}
                         {store.links?.map((l, i) => (
                           <button

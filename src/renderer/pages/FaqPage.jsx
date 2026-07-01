@@ -192,6 +192,9 @@ function CategoryCard({ meta, count, settings, onSelectCategory, onIconChanged, 
       const buffer = await fileToBuffer(file);
       const result = await window.api.faqCategory.setIcon(meta.value, buffer, file.type);
       onIconChanged(meta.value, result);
+    } catch (err) {
+      console.error('Gagal upload icon kategori', err);
+      alert('Gagal mengunggah gambar icon: ' + (err.message || 'format tidak didukung.'));
     } finally {
       setUploadingIcon(false);
     }
@@ -218,6 +221,14 @@ function CategoryCard({ meta, count, settings, onSelectCategory, onIconChanged, 
 
   return (
     <div className="faq-landing-card" onClick={() => !editingDesc && onSelectCategory(meta.value)}>
+      <button
+        className="faq-landing-edit-btn"
+        onClick={(e) => { e.stopPropagation(); setEditingDesc(true); }}
+        title="Edit deskripsi"
+      >
+        ✎
+      </button>
+
       <div
         className="faq-landing-icon-wrap"
         onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
@@ -260,8 +271,8 @@ function CategoryCard({ meta, count, settings, onSelectCategory, onIconChanged, 
           </div>
         </div>
       ) : (
-        <div className="faq-landing-desc" onClick={(e) => { e.stopPropagation(); setEditingDesc(true); }} title="Klik untuk edit deskripsi">
-          {descDraft} <span className="faq-landing-desc-edit-icon">✎</span>
+      <div className="faq-landing-desc" title="Edit deskripsi melalui tombol pensil di pojok kartu">
+          {descDraft}
         </div>
       )}
 
@@ -393,13 +404,15 @@ export default function FaqPage() {
           <button className="btn btn-primary" onClick={() => setCreating(true)}>+ Tambah Pertanyaan</button>
         </div>
         <div className="content-scroll">
-          <CategoryLanding
-            counts={counts}
-            categorySettings={categorySettings}
-            onSelectCategory={setActiveCategory}
-            onIconChanged={handleIconChanged}
-            onDescChanged={handleDescChanged}
-          />
+          <div className="faq-landing-wrap">
+            <CategoryLanding
+              counts={counts}
+              categorySettings={categorySettings}
+              onSelectCategory={setActiveCategory}
+              onIconChanged={handleIconChanged}
+              onDescChanged={handleDescChanged}
+            />
+          </div>
         </div>
 
         {creating && (

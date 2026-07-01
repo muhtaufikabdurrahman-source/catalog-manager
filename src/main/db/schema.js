@@ -201,6 +201,12 @@ const MIGRATIONS = [
 
   ALTER TABLE kaset_stores ADD COLUMN operating_hours TEXT;
   ALTER TABLE kaset_stores ADD COLUMN links TEXT;
+  `,
+
+  // ---- versi 8: pisahkan hari & jam jadwal operasi, tambah label link utama ----
+  `
+  ALTER TABLE kaset_stores ADD COLUMN operating_days TEXT;
+  ALTER TABLE kaset_stores ADD COLUMN url_label TEXT;
   `
 ];
 
@@ -216,4 +222,4 @@ function runMigrations(db) {
   }
 }
 
-module.exports = { runMigrations, SCHEMA_VERSION: MIGRATIONS.length }; // v7
+module.exports = { runMigrations, SCHEMA_VERSION: MIGRATIONS.length }; // v8

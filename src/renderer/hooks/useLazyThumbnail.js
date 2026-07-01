@@ -1,10 +1,29 @@
 import { useEffect, useRef, useState } from 'react';
 
-// Cache thumbnail di memori (Map global, hidup selama sesi aplikasi berjalan).
-// Ini memenuhi requirement "Thumbnail Cache" tanpa menulis ke disk/localStorage
-// (yang dilarang di artifact, dan di aplikasi nyata kita memang ingin cache
-// in-memory karena BLOB sudah permanen tersimpan di SQLite).
+// Cache thumbnail di memori, hidup selama sesi aplikasi berjalan.
+// Dibatasi (LRU, max 2000 entri) supaya pada katalog besar (ratusan ribu
+// foto) memori tidak terus naik tanpa batas selama user scroll panjang
+// dalam satu sesi -- entri terlama otomatis dibuang saat cache penuh.
+const THUMB_CACHE_MAX = 2000;
 const thumbCache = new Map();
+
+function cacheGet(imageId) {
+  if (!thumbCache.has(imageId)) return undefined;
+  // Re-insert supaya entri yang baru diakses jadi "paling baru" (LRU).
+  const value = thumbCache.get(imageId);
+  thumbCache.delete(imageId);
+  thumbCache.set(imageId, value);
+  return value;
+}
+
+function cacheSet(imageId, value) {
+  if (thumbCache.has(imageId)) thumbCache.delete(imageId);
+  thumbCache.set(imageId, value);
+  if (thumbCache.size > THUMB_CACHE_MAX) {
+    const oldestKey = thumbCache.keys().next().value;
+    thumbCache.delete(oldestKey);
+  }
+}
 
 function bufferToDataUrl(bufferLike, mimeType) {
   // bufferLike datang dari IPC sebagai Uint8Array/ArrayBuffer.
@@ -24,7 +43,7 @@ function bufferToDataUrl(bufferLike, mimeType) {
  * scroll berulang tidak memicu IPC call lagi.
  */
 export function useLazyThumbnail(imageId) {
-  const [src, setSrc] = useState(() => thumbCache.get(imageId) || null);
+  const [src, setSrc] = useState(() => cacheGet(imageId) || null);
   const elRef = useRef(null);
 
   useEffect(() => {
@@ -38,15 +57,16 @@ export function useLazyThumbnail(imageId) {
         for (const entry of entries) {
           if (entry.isIntersecting) {
             observer.disconnect();
-            if (thumbCache.has(imageId)) {
-              setSrc(thumbCache.get(imageId));
+            const cached = cacheGet(imageId);
+            if (cached) {
+              setSrc(cached);
               return;
             }
             try {
               const result = await window.api.images.getThumbnail(imageId);
               if (result) {
                 const dataUrl = bufferToDataUrl(result.data, result.mimeType);
-                thumbCache.set(imageId, dataUrl);
+                cacheSet(imageId, dataUrl);
                 setSrc(dataUrl);
               }
             } catch (err) {

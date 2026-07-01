@@ -40,6 +40,8 @@ UI (React, src/renderer)
 | Logic backup/restore database | `src/main/db/backupRepository.js` |
 | Pendaftaran channel IPC baru | `src/main/ipc.js` |
 | Ekspos fungsi baru ke UI (`window.api.*`) | `src/main/preload.js` |
+| Window app (ukuran, posisi, menu, zoom) | `src/main/main.js` |
+| Lazy-load + cache thumbnail di grid/list | `src/renderer/hooks/useLazyThumbnail.js` |
 | Export Excel/CSV/PDF | `src/main/db/exportRepository.js` |
 
 ## 3. Pola Wajib Diikuti Saat Menambah Fitur
@@ -71,7 +73,45 @@ UI (React, src/renderer)
 - Foto/gambar selalu disimpan sebagai BLOB di kolom database, bukan path
   file eksternal, supaya backup selalu lengkap & portabel.
 
-## 5. Riwayat Migrasi Schema (ringkas)
+## 6. Catatan Performa & Optimisasi (penting dibaca sebelum sentuh hal ini lagi)
+
+**Sudah diperbaiki (jangan dikerjakan ulang):**
+- `src/main/main.js` -- event `resize`/`move` window di-debounce 300ms
+  (`saveWindowBoundsDebounced`) sebelum menulis ke SQLite. Sebelumnya
+  menulis ke disk di SETIAP event resize/move (puluhan kali/detik) dan
+  bikin drag-resize window terasa tersendat. Saat window ditutup tetap
+  menyimpan langsung (non-debounced) lewat handler `close`.
+- `src/renderer/hooks/useLazyThumbnail.js` -- `thumbCache` kini dibatasi
+  LRU max 2000 entri (`THUMB_CACHE_MAX`, fungsi `cacheGet`/`cacheSet`).
+  Sebelumnya `Map` tanpa batas, berisiko memori terus naik kalau user
+  scroll sangat panjang dalam satu sesi pada katalog besar.
+
+**Belum dikerjakan, dicatat untuk milestone berikutnya (urutan dampak):**
+1. Filter `region` di `gamesRepository.js::listGames` pakai
+   `LIKE '%"region"%'` pada kolom JSON-string (tidak pakai index). Aman di
+   skala saat ini, tapi kalau filter region jadi sering dipakai di
+   katalog 100rb+ baris, pertimbangkan tabel relasi `game_regions(game_id, region)`
+   dengan index sendiri.
+2. Logic kompresi gambar (Jimp, scaleToFit + quality) terduplikasi 3x di
+   `imagesRepository.js`, `faqImagesRepository.js`, dan
+   `faqCategoryRepository.js`. Sebaiknya diekstrak ke util bersama
+   `src/main/db/imageUtils.js` (`compressImageToVariants(buffer, opts)`)
+   supaya tidak triple-maintain.
+3. `App.jsx` me-mount/unmount halaman secara kondisional
+   (`{activePage === 'x' && <Page />}`), jadi tiap pindah menu, state
+   filter/scroll/search di halaman sebelumnya hilang & refetch dari nol.
+   Bukan masalah performa (query lokal cepat) tapi UX "reset" terus.
+   Perbaikan: render semua halaman sekaligus + `display:none` untuk yang
+   tidak aktif, atau cache state per halaman.
+4. `GameCard.jsx`/`GameTable.jsx` belum pakai `React.memo`/`useMemo`.
+   Tidak terasa di `PAGE_SIZE=60` saat ini, tapi kalau page size dinaikkan
+   akan jadi titik lag berikutnya.
+5. Tiap `GameCard` membuat `IntersectionObserver` sendiri (satu per
+   kartu). Aman di skala 60 item/halaman; kalau nanti ada infinite-scroll
+   atau page size besar, pindah ke satu shared observer (observer-pool
+   pattern) supaya tidak ada ratusan observer paralel.
+
+## 7. Riwayat Migrasi Schema (ringkas)
 
 - v1: skema awal (games, images, price_history, best_seller, dll)
 - v2: seed `shopee_admin_fee`
