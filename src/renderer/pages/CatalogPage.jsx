@@ -246,7 +246,7 @@ export default function CatalogPage() {
           />
         </div>
 
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginLeft: 'auto' }}>
           <button className="btn btn-sm" onClick={handleImport}>⬆ Import</button>
           <button className="btn btn-sm" onClick={handleExportExcel}>⬇ Export</button>
           <div className="dropdown-wrap" ref={dataMenuRef}>
