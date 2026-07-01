@@ -400,8 +400,7 @@ export default function FaqPage() {
     return (
       <>
         <div className="topbar">
-          <div style={{ fontWeight: 600, fontSize: 15 }}>Pertanyaan (FAQ)</div>
-          <button className="btn btn-primary" onClick={() => setCreating(true)}>+ Tambah Pertanyaan</button>
+          <button className="btn btn-primary" style={{ marginLeft: 'auto' }} onClick={() => setCreating(true)}>+ Tambah Pertanyaan</button>
         </div>
         <div className="content-scroll">
           <div className="faq-landing-wrap">

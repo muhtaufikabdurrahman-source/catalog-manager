@@ -2,9 +2,16 @@
 
 Aplikasi desktop Windows untuk mengelola katalog jual-beli game original PlayStation & Nintendo. Berjalan 100% offline, database lokal (SQLite), foto disimpan langsung di database (tidak bergantung path file).
 
-> Status: Milestone 1 selesai -- CRUD game lengkap, database, foto (drag & drop, kompresi otomatis, thumbnail, zoom, cover), grid/list view, search & filter & sort realtime, bulk delete & bulk update harga, riwayat perubahan harga, duplikasi item.
-> Milestone 2 (perbaikan urgensi) selesai -- landing page FAQ diperbesar, icon kategori FAQ bisa diganti gambar custom, deskripsi kategori FAQ editable langsung dari UI, jadwal operasi & multi-link untuk Tempat Beli Kaset, backup dipastikan & didokumentasikan mencakup FAQ + Tempat Beli Kaset, serta catatan navigasi kode untuk AI (`AI_CODE_MAP.md`).
-> Belum tersedia (milestone berikutnya): Import/Export Excel/CSV/PDF, fitur Best Seller lanjutan, Undo/Redo global.
+> Status terkini (schema v9): CRUD game lengkap (database, foto drag & drop
+> dengan kompresi otomatis, thumbnail, zoom, cover, grid/list, search & filter
+> & sort realtime, filter tanpa foto, bulk delete & bulk update harga, riwayat
+> perubahan harga, duplikasi item) -- Best Seller -- Pertanyaan (FAQ) dengan
+> kategori & icon custom -- Tempat Beli Kaset (multi-link, jadwal operasi,
+> link dibuka lewat browser default OS agar sesi login tidak perlu diulang) --
+> Import/Export Excel & CSV -- Backup/Restore database (1 file `catalog.db`
+> mencakup semua data termasuk foto) -- sidebar reorder drag & drop.
+> Belum tersedia: reposisi toolbar Import/Export/Backup/Restore (di-hold),
+> Export PDF, Undo/Redo global.
 
 ---
 
@@ -61,7 +68,7 @@ Hasil build ada di folder dist_installer/.
 
 ---
 
-## 4. Lokasi Database & Backup Manual
+## 4. Lokasi Database & Backup
 
 Database SQLite (catalog.db) disimpan otomatis di:
 
@@ -69,9 +76,9 @@ Database SQLite (catalog.db) disimpan otomatis di:
 C:\Users\<NamaUser>\AppData\Roaming\Catalog Manager\database\catalog.db
 ```
 
-Untuk migrasi data antar komputer atau backup manual (sebelum fitur Backup/Restore di UI tersedia), cukup salin folder database tersebut ke komputer tujuan, lalu letakkan di lokasi yang sama. Karena foto produk tersimpan sebagai BLOB di dalam file catalog.db itu sendiri, satu file ini sudah membawa seluruh data termasuk foto -- tidak ada file lain yang perlu disalin.
+Cara paling gampang backup/restore: pakai tombol **Backup** dan **Restore** di halaman Katalog Game (sudah ada di aplikasi). Backup cukup 1 file `catalog.db` karena semua data -- termasuk foto yang tersimpan sebagai BLOB -- ada di dalamnya. Ini juga mencakup FAQ dan Tempat Beli Kaset, bukan cuma katalog game.
 
-Tutup aplikasi terlebih dahulu sebelum menyalin file database untuk menghindari file catalog.db-wal yang belum di-flush.
+Kalau perlu salin manual (tanpa lewat UI), tutup aplikasi dulu sebelum menyalin file database, supaya file catalog.db-wal yang belum di-flush tidak ikut hilang/rusak.
 
 ---
 
@@ -81,16 +88,23 @@ Tutup aplikasi terlebih dahulu sebelum menyalin file database untuk menghindari 
 src/
   main/             Proses utama Electron (Node.js) - akses database & filesystem
     db/
-      schema.js          Skema tabel + sistem migrasi
-      connection.js       Membuka koneksi SQLite di folder userData
-      gamesRepository.js  CRUD game, search, sort, filter, riwayat harga
-      imagesRepository.js Penyimpanan foto sebagai BLOB + kompresi (Sharp)
-    main.js          Entry point, membuat window aplikasi
+      schema.js               Skema tabel + sistem migrasi (v1-v9)
+      connection.js           Membuka koneksi SQLite di folder userData
+      gamesRepository.js      CRUD game, search, sort, filter, riwayat harga
+      imagesRepository.js     Penyimpanan foto game sebagai BLOB + kompresi (Jimp)
+      faqRepository.js        CRUD Pertanyaan (FAQ)
+      faqImagesRepository.js  Gambar jawaban FAQ
+      faqCategoryRepository.js Deskripsi & icon custom per kategori FAQ
+      kasetStoresRepository.js CRUD Tempat Beli Kaset
+      exportRepository.js     Export Excel/CSV
+      backupRepository.js     Backup/Restore file catalog.db
+      sidebarRepository.js    Urutan menu sidebar (drag & drop)
+    main.js          Entry point, membuat window aplikasi, buka link eksternal via browser default
     preload.js        Jembatan aman antara UI dan backend (contextBridge)
     ipc.js            Pendaftaran semua handler IPC
   renderer/          UI React (apa yang dilihat pengguna)
-    components/      Komponen UI (GameCard, GameTable, modal, dll)
-    pages/            Halaman (Catalog, Best Seller)
+    components/      Komponen UI (GameCard, GameTable, GameFormModal, modal, dll)
+    pages/            Halaman (Katalog Game, Best Seller, Pertanyaan/FAQ, Tempat Beli Kaset)
     hooks/             Custom hooks (lazy loading thumbnail)
     styles/            CSS global (design tokens, tema bright/minimalis)
   shared/            Konstanta yang dipakai bersama main & renderer (platform, region, dll)
@@ -103,7 +117,8 @@ build/               Icon aplikasi (.ico)
 - Electron -- membungkus aplikasi jadi desktop app Windows standalone
 - React + Vite -- UI
 - better-sqlite3 -- database lokal, dengan FTS5 untuk search realtime yang cepat di puluhan ribu data
-- Sharp -- kompresi & thumbnail foto otomatis di sisi backend (bukan di browser, jadi lebih cepat & hemat memori)
+- Jimp -- kompresi & thumbnail foto otomatis di sisi backend (game, FAQ, & icon kategori FAQ)
+- exceljs -- import/export Excel & CSV
 - electron-builder -- membungkus jadi installer .exe (NSIS) dan portable
 
 ## 7. Catatan Performa

@@ -15,6 +15,7 @@ export default function CatalogPage() {
   const [platform, setPlatform] = useState('');
   const [region, setRegion] = useState('');
   const [condition, setCondition] = useState('');
+  const [noPhoto, setNoPhoto] = useState(false);
   const [sortBy, setSortBy] = useState('updated_at');
   const [sortDir, setSortDir] = useState('desc');
   const [page, setPage] = useState(0);
@@ -39,7 +40,7 @@ export default function CatalogPage() {
     return () => clearTimeout(t);
   }, [search]);
 
-  useEffect(() => { setPage(0); }, [debouncedSearch, platform, region, condition, sortBy, sortDir]);
+  useEffect(() => { setPage(0); }, [debouncedSearch, platform, region, condition, noPhoto, sortBy, sortDir]);
 
   const fetchGames = useCallback(async () => {
     setLoading(true);
@@ -49,6 +50,7 @@ export default function CatalogPage() {
         platform: platform || null,
         region: region || null,
         condition: condition || null,
+        noPhoto,
         sortBy,
         sortDir,
         limit: PAGE_SIZE,
@@ -61,7 +63,7 @@ export default function CatalogPage() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, platform, region, condition, sortBy, sortDir, page]);
+  }, [debouncedSearch, platform, region, condition, noPhoto, sortBy, sortDir, page]);
 
   useEffect(() => { fetchGames(); }, [fetchGames]);
 
@@ -242,7 +244,7 @@ export default function CatalogPage() {
           <button className="btn btn-sm" title="Backup database" onClick={handleBackup}>💾 Backup</button>
           <button className="btn btn-sm" title="Restore database" onClick={handleRestore}>♻️ Restore</button>
           <button
-            className="btn btn-sm"
+            className="btn btn-accent"
             title="Hitung ulang Setting Shopee semua kartu dari Jual Offline"
             onClick={() => setShowRecalcShopeeModal(true)}
           >↺ Update Shopee</button>
@@ -290,6 +292,10 @@ export default function CatalogPage() {
               <option value="sell_price_shopee:asc">Harga Shopee Terendah</option>
               <option value="sell_price_shopee:desc">Harga Shopee Tertinggi</option>
             </select>
+            <label className="checkbox-filter" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--color-text-muted)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              <input type="checkbox" checked={noPhoto} onChange={(e) => setNoPhoto(e.target.checked)} />
+              Tanpa foto
+            </label>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{total} game</span>

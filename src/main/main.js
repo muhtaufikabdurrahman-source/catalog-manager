@@ -1,5 +1,5 @@
 const path = require('path');
-const { app, BrowserWindow, Menu, globalShortcut } = require('electron');
+const { app, BrowserWindow, Menu, globalShortcut, shell } = require('electron');
 const { registerIpcHandlers } = require('./ipc');
 const { closeDb } = require('./db/connection');
 
@@ -118,6 +118,17 @@ function createWindow() {
   });
 
   mainWindow.once('ready-to-show', () => mainWindow.show());
+
+  // Semua window.open()/target="_blank" dari renderer dialihkan ke browser
+  // default OS (bukan bikin BrowserWindow Electron baru yang sesi/cookienya
+  // kosong terpisah dari browser user). Ini mencegah user diminta login
+  // ulang setiap klik link eksternal (mis. link toko di Tempat Beli Kaset).
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
 
   // Simpan posisi/ukuran saat window dipindah atau di-resize (debounced).
   // Saat ditutup, simpan langsung (non-debounced) supaya tidak hilang.

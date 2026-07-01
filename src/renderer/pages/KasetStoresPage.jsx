@@ -207,6 +207,20 @@ function StoreFormModal({ store, onClose, onSaved, onDeleted }) {
   );
 }
 
+// Buka link toko lewat browser default OS (bukan window.open Electron),
+// supaya user tetap pakai sesi login yang sudah ada di browsernya dan tidak
+// diminta login ulang setiap klik. Fallback ke window.open kalau untuk
+// alasan tertentu window.api tidak tersedia (mis. dijalankan di browser biasa
+// saat development renderer-only).
+function openStoreLink(url) {
+  if (!url) return;
+  if (window.api?.shell?.openExternal) {
+    window.api.shell.openExternal(url);
+  } else {
+    window.open(url, '_blank');
+  }
+}
+
 export default function KasetStoresPage() {
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -252,8 +266,7 @@ export default function KasetStoresPage() {
   return (
     <>
       <div className="topbar">
-        <div style={{ fontWeight: 600, fontSize: 15 }}>Tempat Beli Kaset</div>
-        <button className="btn btn-primary" onClick={() => setCreating(true)}>+ Tambah Toko</button>
+        <button className="btn btn-primary" style={{ marginLeft: 'auto' }} onClick={() => setCreating(true)}>+ Tambah Toko</button>
       </div>
 
       {loading && <div className="loading-bar" />}
@@ -294,7 +307,7 @@ export default function KasetStoresPage() {
                         {store.url && (
                           <button
                             className="btn btn-sm"
-                            onClick={() => window.open(store.url, '_blank')}
+                            onClick={() => openStoreLink(store.url)}
                           >
                             {store.urlLabel || 'Link Utama'}
                           </button>
@@ -303,7 +316,7 @@ export default function KasetStoresPage() {
                           <button
                             key={i}
                             className="btn btn-sm"
-                            onClick={() => window.open(l.url, '_blank')}
+                            onClick={() => openStoreLink(l.url)}
                           >
                             {l.label || `Link ${i + 1}`}
                           </button>

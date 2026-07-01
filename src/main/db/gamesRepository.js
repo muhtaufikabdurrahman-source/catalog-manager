@@ -225,6 +225,7 @@ function listGames(options = {}) {
     maxPrice = null,
     priceField = 'sell_price_offline',
     isBestSeller = null,
+    noPhoto = false,
     sortBy = 'updated_at',
     sortDir = 'desc',
     limit = 100,
@@ -266,6 +267,9 @@ function listGames(options = {}) {
   if (isBestSeller !== null) {
     where.push('g.is_best_seller = @isBestSeller');
     params.isBestSeller = isBestSeller ? 1 : 0;
+  }
+  if (noPhoto) {
+    where.push('NOT EXISTS (SELECT 1 FROM images i WHERE i.game_id = g.id)');
   }
 
   let fromClause = 'games g';

@@ -207,6 +207,26 @@ const MIGRATIONS = [
   `
   ALTER TABLE kaset_stores ADD COLUMN operating_days TEXT;
   ALTER TABLE kaset_stores ADD COLUMN url_label TEXT;
+  `,
+
+  // ---- versi 9: normalisasi region legacy "JPN" -> "JAP" (bug: item region
+  // "JPN" tidak ada di daftar region resmi/constants.json sehingga tidak
+  // punya chip di form dan tidak bisa dimatikan/dicentang dari UI, padahal
+  // masih tampil sebagai tag di kartu game). Region resmi tetap "JAP".
+  // Pakai json1 (json_each/json_group_array) supaya array region yang
+  // sudah berisi "JAP" & "JPN" sekaligus otomatis ke-dedupe, bukan cuma
+  // string replace polos yang bisa menyisakan duplikat.
+  `
+  UPDATE games
+  SET region = (
+    SELECT json_group_array(val)
+    FROM (
+      SELECT DISTINCT
+        CASE WHEN je.value = 'JPN' THEN 'JAP' ELSE je.value END AS val
+      FROM json_each(games.region) je
+    )
+  )
+  WHERE region LIKE '%JPN%';
   `
 ];
 
@@ -222,4 +242,4 @@ function runMigrations(db) {
   }
 }
 
-module.exports = { runMigrations, SCHEMA_VERSION: MIGRATIONS.length }; // v8
+module.exports = { runMigrations, SCHEMA_VERSION: MIGRATIONS.length }; // v9

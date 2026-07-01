@@ -1,6 +1,6 @@
 // src/main/ipc.js
 
-const { ipcMain, dialog, app } = require('electron');
+const { ipcMain, dialog, app, shell } = require('electron');
 const path = require('path');
 const gamesRepo = require('./db/gamesRepository');
 const imagesRepo = require('./db/imagesRepository');
@@ -160,6 +160,20 @@ function registerIpcHandlers() {
     const { getDb } = require('./db/connection');
     const db = getDb();
     db.prepare('INSERT OR REPLACE INTO app_meta (key, value) VALUES (?, ?)').run(key, String(value));
+    return { success: true };
+  });
+
+  // ---- Buka link eksternal (Tempat Beli Kaset, dll) di browser default OS ----
+  // Alasan: window.open('_blank') dari renderer Electron TIDAK memakai profil
+  // browser default user (cookie/sesi login terpisah), jadi setiap klik link
+  // toko selalu diminta login ulang. Pakai shell.openExternal supaya link
+  // dibuka di browser sistem yang sudah punya sesi login user (persist per
+  // PC, otomatis "terikat" ke masing-masing komputer).
+  ipcMain.handle('shell:openExternal', async (_e, url) => {
+    if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) {
+      return { success: false, error: 'URL tidak valid' };
+    }
+    await shell.openExternal(url);
     return { success: true };
   });
 }

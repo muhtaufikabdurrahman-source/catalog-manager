@@ -231,6 +231,22 @@ export default function GameFormModal({ game, onClose, onSaved }) {
                     {r}
                   </button>
                 ))}
+                {/* Safety-net: kalau data lama/import punya region di luar
+                    daftar resmi REGIONS (mis. sisa migrasi yang belum
+                    tercover), tetap render chip-nya di sini supaya user
+                    selalu bisa mematikan/menghapusnya dari UI. */}
+                {form.regions.filter((r) => !REGIONS.includes(r)).map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    title="Region tidak dikenal / legacy — klik untuk menghapus"
+                    className="region-chip active"
+                    style={{ background: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}
+                    onClick={() => toggleRegion(r)}
+                  >
+                    {r} ✕
+                  </button>
+                ))}
               </div>
               {form.regions.length === 0 && (
                 <div className="form-hint" style={{ color: 'var(--color-danger, #e53e3e)', marginTop: 4 }}>

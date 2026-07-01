@@ -75,17 +75,6 @@ UI (React, src/renderer)
 
 ## 6. Catatan Performa & Optimisasi (penting dibaca sebelum sentuh hal ini lagi)
 
-**Sudah diperbaiki (jangan dikerjakan ulang):**
-- `src/main/main.js` -- event `resize`/`move` window di-debounce 300ms
-  (`saveWindowBoundsDebounced`) sebelum menulis ke SQLite. Sebelumnya
-  menulis ke disk di SETIAP event resize/move (puluhan kali/detik) dan
-  bikin drag-resize window terasa tersendat. Saat window ditutup tetap
-  menyimpan langsung (non-debounced) lewat handler `close`.
-- `src/renderer/hooks/useLazyThumbnail.js` -- `thumbCache` kini dibatasi
-  LRU max 2000 entri (`THUMB_CACHE_MAX`, fungsi `cacheGet`/`cacheSet`).
-  Sebelumnya `Map` tanpa batas, berisiko memori terus naik kalau user
-  scroll sangat panjang dalam satu sesi pada katalog besar.
-
 **Belum dikerjakan, dicatat untuk milestone berikutnya (urutan dampak):**
 1. Filter `region` di `gamesRepository.js::listGames` pakai
    `LIKE '%"region"%'` pada kolom JSON-string (tidak pakai index). Aman di
@@ -121,3 +110,7 @@ UI (React, src/renderer)
 - v6: kolom `category` di `faq`
 - v7: tabel `faq_category_settings` (desc & icon kustom per kategori FAQ),
   kolom `operating_hours` & `links` di `kaset_stores`
+- v8: kolom `operating_days` & `url_label` di `kaset_stores`
+- v9: normalisasi region legacy `"JPN"` -> `"JAP"` (region resmi tetap
+  `JAP`, lihat `src/shared/constants.json`), sekaligus dedupe array region
+  yang kebetulan sudah punya `JAP` & `JPN` bersamaan

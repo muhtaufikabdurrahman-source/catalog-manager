@@ -83,4 +83,7 @@ contextBridge.exposeInMainWorld('api', {
     get: (key) => invoke('settings:get', key),
     set: (key, value) => invoke('settings:set', key, value),
   },
+  shell: {
+    openExternal: (url) => invoke('shell:openExternal', url),
+  },
 });
