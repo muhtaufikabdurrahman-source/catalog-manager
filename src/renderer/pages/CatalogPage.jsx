@@ -30,6 +30,8 @@ export default function CatalogPage() {
   const [showBulkPriceModal, setShowBulkPriceModal] = useState(false);
   const [showRecalcShopeeModal, setShowRecalcShopeeModal] = useState(false);
   const [importStatus, setImportStatus] = useState(null);
+  const [showDataMenu, setShowDataMenu] = useState(false);
+  const dataMenuRef = useRef(null);
 
   // State untuk drop foto ke card
   const [dragOverCardId, setDragOverCardId] = useState(null);
@@ -66,6 +68,18 @@ export default function CatalogPage() {
   }, [debouncedSearch, platform, region, condition, noPhoto, sortBy, sortDir, page]);
 
   useEffect(() => { fetchGames(); }, [fetchGames]);
+
+  // Tutup dropdown "Data" (Backup/Restore) saat klik di luar area dropdown.
+  useEffect(() => {
+    if (!showDataMenu) return;
+    function handleClickOutside(e) {
+      if (dataMenuRef.current && !dataMenuRef.current.contains(e.target)) {
+        setShowDataMenu(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showDataMenu]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -133,11 +147,6 @@ export default function CatalogPage() {
   async function handleExportExcel() {
     const result = await window.api.importExport.exportExcel();
     if (!result.canceled) alert(`Export Excel selesai: ${result.count} game disimpan ke:\n${result.filePath}`);
-  }
-
-  async function handleExportCsv() {
-    const result = await window.api.importExport.exportCsv();
-    if (!result.canceled) alert(`Export CSV selesai: ${result.count} game disimpan ke:\n${result.filePath}`);
   }
 
   // ---- Import ----
@@ -239,10 +248,27 @@ export default function CatalogPage() {
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <button className="btn btn-sm" onClick={handleImport}>⬆ Import</button>
-          <button className="btn btn-sm" onClick={handleExportExcel}>⬇ Excel</button>
-          <button className="btn btn-sm" onClick={handleExportCsv}>⬇ CSV</button>
-          <button className="btn btn-sm" title="Backup database" onClick={handleBackup}>💾 Backup</button>
-          <button className="btn btn-sm" title="Restore database" onClick={handleRestore}>♻️ Restore</button>
+          <button className="btn btn-sm" onClick={handleExportExcel}>⬇ Export</button>
+          <div className="dropdown-wrap" ref={dataMenuRef}>
+            <button
+              className="btn btn-sm"
+              onClick={() => setShowDataMenu((v) => !v)}
+            >🗄 Data</button>
+            {showDataMenu && (
+              <div className="dropdown-menu">
+                <button
+                  className="dropdown-menu-item"
+                  title="Backup database"
+                  onClick={() => { setShowDataMenu(false); handleBackup(); }}
+                >💾 Backup</button>
+                <button
+                  className="dropdown-menu-item"
+                  title="Restore database"
+                  onClick={() => { setShowDataMenu(false); handleRestore(); }}
+                >♻️ Restore</button>
+              </div>
+            )}
+          </div>
           <button
             className="btn btn-accent"
             title="Hitung ulang Setting Shopee semua kartu dari Jual Offline"

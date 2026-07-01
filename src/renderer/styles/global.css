@@ -230,6 +230,108 @@ input, select, textarea {
   color: var(--color-text-secondary);
 }
 
+/* ---------- Store row (Tempat Beli Kaset) — baris ringkas 1 baris ---------- */
+.store-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.store-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  transition: border-color var(--transition-fast);
+}
+
+.store-row-drag-over {
+  box-shadow: inset 0 0 0 2px var(--color-primary);
+}
+
+.store-drag-handle {
+  font-size: 13px;
+  letter-spacing: -2px;
+  color: var(--color-text-faint);
+  cursor: grab;
+  flex-shrink: 0;
+}
+
+.store-name {
+  font-weight: 600;
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.store-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.store-link-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-3);
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.store-link-pill:hover {
+  background: var(--color-surface-alt);
+  border-color: var(--color-primary);
+}
+
+.store-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  flex: 1;
+  min-width: 120px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.store-meta-item {
+  white-space: nowrap;
+}
+
+.store-edit-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.store-link-form-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.store-link-form-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.store-link-form-label {
+  flex: 0 0 96px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
 .faq-landing-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -1247,8 +1349,43 @@ input, select, textarea {
   color: var(--color-success);
 }
 
-/* ---------- Button group ---------- */
-.btn-group-dropdown {
+/* ---------- Dropdown menu (mis. tombol "Data" -> Backup/Restore) ---------- */
+.dropdown-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  min-width: 160px;
+  padding: var(--space-1);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   display: flex;
+  flex-direction: column;
   gap: 2px;
+}
+
+.dropdown-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.dropdown-menu-item:hover {
+  background: var(--color-surface-alt);
 }
